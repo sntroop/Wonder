@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/now_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:id="@+id/now_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="46dp"
+        android:layout_marginBottom="78dp"
+        android:orientation="vertical"
+        android:background="@drawable/bg_sheet"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="16dp">
+
+        <!-- ручка: тянем вниз - трек сворачивается -->
+        <LinearLayout
+            android:id="@+id/now_drag"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
+
+            <View
+                android:id="@+id/now_handle"
+                android:layout_width="46dp"
+                android:layout_height="4dp"
+                android:background="@drawable/bg_pill" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageButton
+                android:id="@+id/now_close"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:src="@drawable/ic_chevron_down"
+                android:tint="@color/text_secondary"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Свернуть" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Сейчас играет"
+                android:textColor="@color/text_tertiary"
+                android:textSize="11.5sp" />
+
+            <ImageButton
+                android:id="@+id/now_share"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_share"
+                android:tint="@color/text_secondary"
+                android:contentDescription="Поделиться" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/now_cover_box"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp">
+
+            <ImageView
+                android:id="@+id/now_cover"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_cover_big"
+                android:clipToOutline="true"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_music_note"
+                android:contentDescription="Обложка" />
+
+            <ImageButton
+                android:id="@+id/now_prev_hint"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_gravity="start|center_vertical"
+                android:layout_marginStart="8dp"
+                android:alpha="0.6"
+                android:background="@drawable/bg_glass_circle"
+                android:scaleX="-1"
+                android:src="@drawable/ic_chevron"
+                android:tint="#FFFFFF"
+                android:contentDescription="Предыдущий" />
+
+            <ImageButton
+                android:id="@+id/now_next_hint"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_gravity="end|center_vertical"
+                android:layout_marginEnd="8dp"
+                android:alpha="0.6"
+                android:background="@drawable/bg_glass_circle"
+                android:src="@drawable/ic_chevron"
+                android:tint="#FFFFFF"
+                android:contentDescription="Следующий" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/now_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/now_artist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+
+        <!-- действия: тихая строка «иконка + подпись», без плашек и рамок -->
+        <LinearLayout
+            android:id="@+id/now_actions1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/now_similar"
+                style="@style/NowAction">
+
+                <ImageView
+                    android:id="@+id/now_similar_ic"
+                    style="@style/NowActionIcon"
+                    android:src="@drawable/ic_wave"
+                    android:contentDescription="Волна по треку" />
+
+                <TextView
+                    android:id="@+id/now_similar_tx"
+                    style="@style/NowActionLabel"
+                    android:text="Волна" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/now_playlist"
+                style="@style/NowAction">
+
+                <ImageView
+                    android:id="@+id/now_playlist_ic"
+                    style="@style/NowActionIcon"
+                    android:src="@drawable/ic_playlist_add"
+                    android:contentDescription="В плейлист" />
+
+                <TextView
+                    android:id="@+id/now_playlist_tx"
+                    style="@style/NowActionLabel"
+                    android:text="Плейлист" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/now_remixes"
+                style="@style/NowAction">
+
+                <ImageView
+                    android:id="@+id/now_remixes_ic"
+                    style="@style/NowActionIcon"
+                    android:src="@drawable/ic_remix"
+                    android:contentDescription="Все ремиксы" />
+
+                <TextView
+                    android:id="@+id/now_remixes_tx"
+                    style="@style/NowActionLabel"
+                    android:text="Ремиксы" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/now_lyrics"
+                style="@style/NowAction">
+
+                <ImageView
+                    android:id="@+id/now_lyrics_ic"
+                    style="@style/NowActionIcon"
+                    android:src="@drawable/ic_lyrics"
+                    android:contentDescription="Текст песни" />
+
+                <TextView
+                    android:id="@+id/now_lyrics_tx"
+                    style="@style/NowActionLabel"
+                    android:text="Текст" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/now_download"
+                style="@style/NowAction">
+
+                <ImageView
+                    android:id="@+id/now_download_ic"
+                    style="@style/NowActionIcon"
+                    android:src="@drawable/ic_download"
+                    android:contentDescription="Скачать" />
+
+                <TextView
+                    android:id="@+id/now_download_tx"
+                    style="@style/NowActionLabel"
+                    android:text="Скачать" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <ScrollView
+            android:id="@+id/now_lyrics_box"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginTop="10dp"
+            android:visibility="gone"
+            android:scrollbars="none"
+            android:fadingEdgeLength="40dp"
+            android:requiresFadingEdge="vertical">
+
+            <LinearLayout
+                android:id="@+id/now_lyrics_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </ScrollView>
+
+        <su.gwarden.music.ui.ProgressStrip
+            android:id="@+id/now_strip"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:layout_marginTop="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/now_cur"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="0:00"
+                android:textColor="@color/text_tertiary"
+                android:textSize="11.5sp" />
+
+            <TextView
+                android:id="@+id/now_dur"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0:00"
+                android:textColor="@color/text_tertiary"
+                android:textSize="11.5sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <View
+                android:layout_width="54dp"
+                android:layout_height="1dp" />
+
+            <ImageButton
+                android:id="@+id/now_prev"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_prev"
+                android:tint="@color/text_primary"
+                android:contentDescription="Предыдущий" />
+
+            <ImageButton
+                android:id="@+id/now_play"
+                android:layout_width="66dp"
+                android:layout_height="66dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:background="@drawable/bg_btn"
+                android:src="@drawable/ic_play"
+                android:tint="#0A0A0A"
+                android:contentDescription="Играть" />
+
+            <ImageButton
+                android:id="@+id/now_next"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_next"
+                android:tint="@color/text_primary"
+                android:contentDescription="Следующий" />
+
+            <ImageButton
+                android:id="@+id/now_add"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="10dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_plus"
+                android:tint="#B0B0B0"
+                android:contentDescription="Добавить в мою музыку" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

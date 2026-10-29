@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MusicPlayer" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorPrimaryVariant">@color/accent_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="android:colorBackground">@color/bg</item>
+        <item name="android:windowBackground">@drawable/bg_app</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <!-- брутальный шрифт во всём приложении (Unbounded, есть кириллица) -->
+        <item name="android:fontFamily">@font/unbounded_family</item>
+        <item name="fontFamily">@font/unbounded_family</item>
+        <!-- Свои цвета "нажатия": без них система подставляет акцент прошивки,
+             и по кнопкам пробегает жёлтый/цветной квадрат. -->
+        <item name="android:colorControlHighlight">#1FFFFFFF</item>
+        <item name="colorControlHighlight">#1FFFFFFF</item>
+        <item name="android:textViewStyle">@style/WonderText</item>
+        <item name="android:editTextStyle">@style/WonderEdit</item>
+    </style>
+
+    <style name="WonderText" parent="android:Widget.TextView">
+        <item name="android:fontFamily">@font/unbounded_family</item>
+    </style>
+
+    <style name="WonderEdit" parent="android:Widget.EditText">
+        <item name="android:fontFamily">@font/unbounded_family</item>
+    </style>
+
+    <!-- Шторки и диалоги: раньше они открывались с СИСТЕМНОЙ темой, из-за
+         чего внутри был чужой шрифт и цветной (жёлтый) ripple прошивки.
+         Теперь всё наследует нашу монохромную тему. -->
+    <style name="Theme.Wonder.Sheet" parent="Theme.MusicPlayer">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
+    <style name="Theme.Wonder.Fullscreen" parent="Theme.Wonder.Sheet">
+        <item name="android:windowFullscreen">true</item>
+    </style>
+</resources>

@@ -1,0 +1,820 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/app_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true"
+    android:background="@drawable/bg_app">
+
+    <!-- ============ верхняя плашка: профиль слева, лого по центру, настройки справа ============ -->
+    <FrameLayout
+        android:id="@+id/top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="54dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_topbar">
+
+        <!-- профиль: аватар пользователя (если поставил) -->
+        <FrameLayout
+            android:id="@+id/profile_btn"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="start|center_vertical"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_avatar_dark"
+            android:clipToOutline="true"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:id="@+id/profile_avatar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_artist"
+                android:tint="#DEDEDE"
+                android:padding="8dp"
+                android:contentDescription="Профиль" />
+        </FrameLayout>
+
+        <!-- лого + Wonder по центру -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageView
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:src="@drawable/logo_wonder"
+                android:scaleType="fitCenter"
+                android:contentDescription="Wonder" />
+
+            <TextView
+                android:id="@+id/top_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="Wonder"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.03" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btn_settings"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_gravity="end|center_vertical"
+            android:layout_marginEnd="6dp"
+            android:src="@drawable/ic_gear"
+            android:tint="@color/text_primary"
+            android:alpha="0.85"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Настройки" />
+    </FrameLayout>
+
+    <!-- ================= шапка (прячем на вкладках, показываем на подэкранах) ================= -->
+    <LinearLayout
+        android:id="@+id/app_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="8dp">
+
+        <ImageButton
+            android:id="@+id/btn_back"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_marginEnd="6dp"
+            android:src="@drawable/ic_back"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Назад"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingStart="0dp">
+
+            <TextView
+                android:id="@+id/h_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Wonder"
+                android:textColor="@color/text_primary"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:singleLine="true" />
+
+            <TextView
+                android:id="@+id/h_sub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btn_search_top"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:src="@drawable/ic_search"
+            android:tint="@color/accent"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Поиск" />
+
+        <ImageButton
+            android:id="@+id/btn_more"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:src="@drawable/ic_more"
+            android:tint="@color/accent"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Ещё" />
+    </LinearLayout>
+
+    <!-- ================= чипсы (скрыты: навигация внизу) ================= -->
+    <HorizontalScrollView
+        android:id="@+id/chips_scroll"
+        android:visibility="gone"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="10dp"
+        android:clipToPadding="false">
+
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <!-- height=0dp ОБЯЗАТЕЛЬНО: с match_parent внутри wrap_content-контейнера
+                 капля растягивала весь блок чипсов на высоту экрана, контент получал
+                 высоту 0, а таб-бар уезжал за границу экрана. Реальную высоту капле
+                 ставит moveChipBlob() уже после разметки. -->
+            <su.gwarden.music.ui.LiquidBlob
+                android:id="@+id/chip_blob"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:visibility="invisible" />
+
+            <LinearLayout
+                android:id="@+id/chips_row"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/chip_home"
+                style="@style/Chip"
+                android:text="Сейчас играет" />
+
+            <TextView
+                android:id="@+id/chip_search"
+                style="@style/Chip"
+                android:text="Поиск" />
+
+            <TextView
+                android:id="@+id/chip_my"
+                style="@style/Chip"
+                android:text="Моя волна" />
+
+            <TextView
+                android:id="@+id/chip_lib"
+                style="@style/Chip"
+                android:text="Библиотека" />
+
+            </LinearLayout>
+        </FrameLayout>
+    </HorizontalScrollView>
+
+    <!-- ================= сортировка (Моя музыка) ================= -->
+    <FrameLayout
+        android:id="@+id/sort_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/sc_chip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="start|center_vertical"
+            android:paddingStart="13dp"
+            android:paddingEnd="13dp"
+            android:paddingTop="7dp"
+            android:paddingBottom="7dp"
+            android:text="SoundCloud"
+            android:textColor="@color/chip_text"
+            android:textSize="12.5sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_chip"
+            android:visibility="gone"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <ImageButton
+            android:id="@+id/sort_btn"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_gravity="end"
+            android:padding="7dp"
+            android:src="@drawable/ic_sort"
+            android:tint="#FFFFFF"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Сортировка" />
+    </FrameLayout>
+
+    <!-- ================= строка поиска ================= -->
+    <LinearLayout
+        android:id="@+id/search_row"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="8dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_search"
+        android:paddingStart="12dp"
+        android:paddingEnd="8dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="17dp"
+            android:layout_height="17dp"
+            android:src="@drawable/ic_search"
+            android:tint="@color/text_tertiary"
+            android:contentDescription="Поиск" />
+
+        <EditText
+            android:id="@+id/edit_query"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:hint="Треки, исполнители..."
+            android:inputType="text"
+            android:imeOptions="actionSearch"
+            android:background="@android:color/transparent"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_tertiary"
+            android:textSize="15sp"
+            android:paddingStart="9dp"
+            android:paddingEnd="6dp"
+            android:autofillHints="" />
+
+        <TextView
+            android:id="@+id/source_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:text="VK"
+            android:textColor="#EBEBEB"
+            android:textStyle="bold"
+            android:textSize="12sp"
+            android:paddingStart="9dp"
+            android:paddingEnd="9dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:background="@drawable/bg_source" />
+    </LinearLayout>
+
+    <!-- ================= типы поиска: сегментированный контрол ================= -->
+    <FrameLayout
+        android:id="@+id/search_types"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_segment"
+        android:padding="4dp"
+        android:visibility="gone">
+
+        <View
+            android:id="@+id/st_pill"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_gravity="center_vertical"
+            android:background="@drawable/bg_listen" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/st_tracks"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:text="Треки"
+                android:textColor="#B4B4B4"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/st_artists"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:text="Артисты"
+                android:textColor="#B4B4B4"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/st_albums"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:text="Альбомы"
+                android:textColor="#B4B4B4"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/st_playlists"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:text="Плейлисты"
+                android:textColor="#B4B4B4"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ================= контент ================= -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="8dp"
+            android:clipToPadding="false"
+            android:scrollbars="none" />
+
+        <!-- главная: лента подборок VK (Новинки, Сегодня в плеере, выбор редакции) -->
+        <ScrollView
+            android:id="@+id/feed_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:scrollbars="none"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/feed_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="2dp"
+                android:paddingBottom="14dp" />
+        </ScrollView>
+
+        <!-- ================= БИБЛИОТЕКА: хаб с крупными разделами ================= -->
+        <ScrollView
+            android:id="@+id/lib_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:scrollbars="none"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/lib_box"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="28dp" />
+        </ScrollView>
+
+        <su.gwarden.music.ui.EqBackground
+            android:id="@+id/wave_eq"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/wave_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:visibility="gone">
+
+            <FrameLayout
+                android:id="@+id/wave_orb"
+                android:layout_width="206dp"
+                android:layout_height="206dp"
+                android:background="@drawable/bg_orb_soft">
+
+                <ImageView
+                    android:id="@+id/wave_cover"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_margin="8dp"
+                    android:background="@drawable/bg_cover_big"
+                    android:clipToOutline="true"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/ic_music_note"
+                    android:contentDescription="Обложка волны" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/wave_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="30dp"
+                android:gravity="center"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:text="Моя волна"
+                android:textColor="@color/text_primary"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/wave_artist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:text="VK Микс по твоему прослушиванию"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/wave_play"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_btn"
+                    android:paddingStart="38dp"
+                    android:paddingEnd="38dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp"
+                    android:text="Слушать"
+                    android:textColor="#0A0A0A"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <FrameLayout
+                    android:id="@+id/wave_add"
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_glass_circle"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <ImageView
+                        android:id="@+id/wave_add_ic"
+                        android:layout_width="19dp"
+                        android:layout_height="19dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_plus"
+                        android:tint="@color/text_primary"
+                        android:contentDescription="Добавить к себе" />
+                </FrameLayout>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/wave_back"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginTop="6dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:gravity="center"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="Вернуться к своей волне"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/wave_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:padding="4dp"
+                android:text="Следующий трек — сюрприз"
+                android:textColor="@color/text_tertiary"
+                android:textSize="11.5sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/empty_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:padding="30dp"
+            android:text="Пока пусто"
+            android:textColor="@color/text_tertiary"
+            android:textSize="13.5sp"
+            android:lineSpacingExtra="4dp"
+            android:visibility="gone" />
+
+        <su.gwarden.music.ui.IosSpinner
+            android:id="@+id/progress"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+
+        <!-- ================= КАРТОЧКА АРТИСТА ================= -->
+        <ScrollView
+            android:id="@+id/artist_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone"
+            android:fillViewport="true"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/artist_box"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="28dp" />
+        </ScrollView>
+
+        <!-- ================= НАСТРОЙКИ (реальный раздел, не попап) ================= -->
+        <ScrollView
+            android:id="@+id/settings_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone"
+            android:fillViewport="true"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/settings_box"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="28dp" />
+        </ScrollView>
+
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- ================= мини-плеер ================= -->
+    <LinearLayout
+        android:id="@+id/mini"
+        android:layout_width="match_parent"
+        android:layout_height="58dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="6dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_mini"
+        android:padding="9dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/mini_art"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_cover"
+            android:clipToOutline="true"
+            android:src="@drawable/ic_music_note"
+            android:scaleType="centerCrop"
+            android:contentDescription="Обложка" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingStart="11dp"
+            android:paddingEnd="6dp">
+
+            <TextView
+                android:id="@+id/mini_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:textColor="@color/text_primary"
+                android:textSize="13.5sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/mini_artist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:textColor="@color/text_secondary"
+                android:textSize="11.5sp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/mini_add"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:padding="5dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_plus"
+            android:tint="#BEBEBE"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Добавить в мою музыку" />
+
+        <ImageButton
+            android:id="@+id/mini_play"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@drawable/ic_play"
+            android:tint="@color/accent"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Играть" />
+
+        <ImageButton
+            android:id="@+id/mini_next"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@drawable/ic_next"
+            android:tint="@color/accent"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Следующий" />
+
+        <ImageButton
+            android:id="@+id/mini_close"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="2dp"
+            android:padding="7dp"
+            android:src="@drawable/ic_close"
+            android:tint="#9A9A9A"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Закрыть" />
+    </LinearLayout>
+
+    <!-- ================= таб-бар ================= -->
+    <FrameLayout
+        android:id="@+id/nav_wrap"
+        android:layout_width="match_parent"
+        android:layout_height="68dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_nav"
+        android:padding="6dp">
+
+        <su.gwarden.music.ui.LiquidNav
+            android:id="@+id/nav_bubble"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/nav_home"
+                style="@style/NavItem">
+
+                <ImageView
+                    android:id="@+id/nav_home_ic"
+                    style="@style/NavIcon"
+                    android:src="@drawable/ic_home" />
+
+                <TextView
+                    android:id="@+id/nav_home_tx"
+                    style="@style/NavLabel"
+                    android:text="Главная" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/nav_search"
+                style="@style/NavItem">
+
+                <ImageView
+                    android:id="@+id/nav_search_ic"
+                    style="@style/NavIcon"
+                    android:src="@drawable/ic_search_tab" />
+
+                <TextView
+                    android:id="@+id/nav_search_tx"
+                    style="@style/NavLabel"
+                    android:text="Поиск" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/nav_shorts"
+                style="@style/NavItem">
+
+                <ImageView
+                    android:id="@+id/nav_shorts_ic"
+                    style="@style/NavIcon"
+                    android:src="@drawable/ic_shorts" />
+
+                <TextView
+                    android:id="@+id/nav_shorts_tx"
+                    style="@style/NavLabel"
+                    android:text="Шортсы" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/nav_my"
+                style="@style/NavItem">
+
+                <ImageView
+                    android:id="@+id/nav_my_ic"
+                    style="@style/NavIcon"
+                    android:src="@drawable/ic_wave" />
+
+                <TextView
+                    android:id="@+id/nav_my_tx"
+                    style="@style/NavLabel"
+                    android:text="Моя волна" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/nav_lib"
+                style="@style/NavItem">
+
+                <ImageView
+                    android:id="@+id/nav_lib_ic"
+                    style="@style/NavIcon"
+                    android:src="@drawable/ic_library" />
+
+                <TextView
+                    android:id="@+id/nav_lib_tx"
+                    style="@style/NavLabel"
+                    android:text="Библиотека" />
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
+
+</LinearLayout>

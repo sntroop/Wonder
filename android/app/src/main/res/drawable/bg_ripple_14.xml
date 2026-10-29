@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Нейтральный отклик на нажатие, скруглённый по форме строки. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#1FFFFFFF">
+    <item android:id="@android:id/mask">
+        <shape>
+            <corners android:radius="14dp" />
+            <solid android:color="#FFFFFFFF" />
+        </shape>
+    </item>
+</ripple>

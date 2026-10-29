@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Unbounded: широкий геометрический гротеск с кириллицей.
+         Вариативный шрифт: подбираем вес под обычный/жирный текст. -->
+    <font
+        android:font="@font/unbounded"
+        android:fontStyle="normal"
+        android:fontWeight="400"
+        android:fontVariationSettings="'wght' 500" />
+    <font
+        android:font="@font/unbounded"
+        android:fontStyle="normal"
+        android:fontWeight="700"
+        android:fontVariationSettings="'wght' 800" />
+</font-family>

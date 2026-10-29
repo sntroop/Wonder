@@ -1,0 +1,16 @@
+# Android / Gradle
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/local.properties
+
+# артефакты и ключи
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# IDE / OS
+.idea/
+.DS_Store
