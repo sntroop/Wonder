@@ -420,6 +420,16 @@ object ApiClient {
 
     fun toggleLike(t: Track, onDone: (Int, Boolean) -> Unit) { }
 
+    fun likeState(t: Track, onDone: (Boolean) -> Unit) { onDone(false) }
+
+    fun toggleLikeSimple(t: Track, onDone: (Boolean) -> Unit) { onDone(false) }
+
+    fun likes(onDone: (List<Track>) -> Unit) { onDone(emptyList()) }
+
+    fun googleLogin(idToken: String, onDone: (Boolean, String?) -> Unit) {
+        onDone(false, "Сетевой слой отключён в публичной сборке")
+    }
+
     fun addComment(t: Track, posMs: Int, text: String, onDone: (Boolean) -> Unit) { }
 
     fun lyrics(

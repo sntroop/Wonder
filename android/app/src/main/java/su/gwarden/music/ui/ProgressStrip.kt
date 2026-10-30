@@ -34,6 +34,15 @@ class ProgressStrip @JvmOverloads constructor(
     /** Колбэк по отпусканию пальца: 0..1 */
     var onSeek: ((Float) -> Unit)? = null
 
+    /** Акцентный цвет из оформления (белый по умолчанию). */
+    var accent: Int = 0xFFFFFFFF.toInt()
+        set(v) {
+            field = v
+            playPaint.color = v
+            thumbPaint.color = v
+            invalidate()
+        }
+
     private val d = resources.displayMetrics.density
     private val barH = 4f * d
     private val thumbR = 6.5f * d

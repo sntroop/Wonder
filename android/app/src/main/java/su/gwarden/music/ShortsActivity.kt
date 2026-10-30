@@ -62,6 +62,7 @@ class ShortsActivity : AppCompatActivity() {
     private val player get() = PlayerHub.controller
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        su.gwarden.music.ui.Skin.applyTheme(this)
         super.onCreate(savedInstanceState)
         ApiClient.init(this)
         ImageLoader.init(this)
@@ -261,7 +262,7 @@ class ShortsActivity : AppCompatActivity() {
     private fun load(initial: Boolean, refresh: Boolean = false) {
         if (loadingMore) return
         loadingMore = true
-        // учитываем всё, что уже в ленте: иначе приходят те же дропы,
+        // отправляем серверу всё, что уже в ленте: иначе он отдаёт те же дропы,
         // мы их отбрасываем - и шортсы «заканчиваются»
         val exclude = shorts.map { "${it.track.source}:${it.track.id}" }
         ApiClient.shorts(
@@ -374,8 +375,11 @@ class ShortsActivity : AppCompatActivity() {
 
     private fun prefetchNext() {
         val p = player ?: return
-        val nxt = shorts.getOrNull(current + 1) ?: return
-        runCatching { p.prefetch(nxt.track) }
+        // два вперёд: пока листаешь текущий, следующий уже греется
+        for (k in 1..2) {
+            val nxt = shorts.getOrNull(current + k) ?: break
+            runCatching { p.prefetch(nxt.track) }
+        }
     }
 
     /** Тап по обложке: пауза/продолжить. Для другого шортса - просто включаем его. */
@@ -668,6 +672,7 @@ class ShortsActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        su.gwarden.music.ui.Skin.apply(this)
         resumed = true
         handler.removeCallbacks(tick)
         handler.post(tick)

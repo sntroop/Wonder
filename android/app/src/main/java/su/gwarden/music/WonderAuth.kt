@@ -25,7 +25,7 @@ import su.gwarden.music.api.ApiClient
  * Онбординг и вход Wonder.
  *
  * Экран 1 - выбор языка (RU/EN), тап по экрану листает дальше.
- * Экран 2 - объяснение и вход: ВК, по паролю, регистрация
+ * Экран 2 - объяснение (API/Cookie) и вход: ВК, по паролю, регистрация
  *            по @юзернейму (пароль хранится только хешем).
  *
  * Всё монохромное: чёрный фон, белые кнопки, серые подписи.
@@ -54,10 +54,7 @@ object WonderAuth {
         applyLang(ctx)
     }
 
-    fun isOnboarded(ctx: Context): Boolean {
-        // Публичная сборка: сетевого входа нет, поэтому онбординг не блокирует UI.
-        return true
-    }
+    fun isOnboarded(ctx: Context): Boolean = prefs(ctx).getBoolean(K_DONE, false)
     fun markOnboarded(ctx: Context) = prefs(ctx).edit().putBoolean(K_DONE, true).apply()
 
     fun initLang(ctx: Context) {
@@ -182,7 +179,7 @@ object WonderAuth {
         }
         c1.addView(logo(ctx, 96))
         c1.addView(txt(ctx, "Wonder", 40f).apply {
-            typeface = androidx.core.content.res.ResourcesCompat.getFont(ctx, R.font.unbounded_family)
+            typeface = su.gwarden.music.ui.Skin.typeface(ctx)
             letterSpacing = 0.04f
             gravity = Gravity.CENTER
             setPadding(0, dp(ctx, 14), 0, 0)
@@ -256,7 +253,7 @@ object WonderAuth {
             }
             c2.addView(logo(ctx, 72))
             c2.addView(txt(ctx, "Wonder", 30f).apply {
-                typeface = androidx.core.content.res.ResourcesCompat.getFont(ctx, R.font.unbounded_family)
+                typeface = su.gwarden.music.ui.Skin.typeface(ctx)
                 letterSpacing = 0.04f
                 gravity = Gravity.CENTER
                 setPadding(0, dp(ctx, 10), 0, 0)
@@ -265,11 +262,11 @@ object WonderAuth {
                 ctx,
                 t(
                     ctx,
-                    "Wonder не хранит треки сам — мы используем API музыкальных сервисов. " +
+                    "Wonder не хранит треки сам — мы используем API и Cookie. " +
                         "Поэтому мы настоятельно просим вас войти через ВК, даже если у вас там нет музыки. " +
                         "Если ВК нет — зарегистрируйтесь по @юзернейму. После этого вы сможете привязать " +
                         "популярные сервисы и правильно настроить рекомендации.",
-                    "Wonder doesn't host music itself — we use music service APIs. " +
+                    "Wonder doesn't host music itself — we use APIs and cookies. " +
                         "That's why we strongly recommend signing in with VK, even if you have no music there. " +
                         "No VK? Create an account with a @username. After that you can connect popular services " +
                         "and tune your recommendations."
@@ -294,6 +291,12 @@ object WonderAuth {
                 c2.addView(vk, LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 54)
                 ))
+
+                val google = button(ctx, t(ctx, "Продолжить с Google", "Continue with Google"), false)
+                google.setOnClickListener { signInGoogle(act) }
+                c2.addView(google, LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 54)
+                ).apply { topMargin = dp(ctx, 10) })
 
                 val byPass = button(ctx, t(ctx, "Войти по паролю", "Sign in with password"), false)
                 byPass.setOnClickListener { openSheet(act, register = false) }
@@ -362,7 +365,7 @@ object WonderAuth {
         }
         col.addView(logo(ctx, 104))
         col.addView(txt(ctx, "Wonder", 42f).apply {
-            typeface = androidx.core.content.res.ResourcesCompat.getFont(ctx, R.font.unbounded_family)
+            typeface = su.gwarden.music.ui.Skin.typeface(ctx)
             letterSpacing = 0.04f
             gravity = Gravity.CENTER
             setPadding(0, dp(ctx, 12), 0, 0)
@@ -379,6 +382,12 @@ object WonderAuth {
         col.addView(vk, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 54)
         ))
+
+        val google = button(ctx, t(ctx, "Продолжить с Google", "Continue with Google"), false)
+        google.setOnClickListener { signInGoogle(act) }
+        col.addView(google, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 54)
+        ).apply { topMargin = dp(ctx, 10) })
 
         val byPass = button(ctx, t(ctx, "Войти по паролю", "Sign in with password"), false)
         byPass.setOnClickListener { openSheet(act, register = false) }
@@ -409,6 +418,39 @@ object WonderAuth {
     }
 
     // ------------------------------------------------------- формы входа/рег.
+
+    /**
+     * Вход через Google: системный выбор аккаунта (Credential Manager).
+     * Наружу уходит только id_token, подпись проверяет сервер.
+     */
+    private fun signInGoogle(act: MainActivity) {
+        // Публичная сборка: сетевой вход через Google отключён.
+        toast(act, t(act, "Вход через Google недоступен в публичной сборке Wonder.",
+            "Google sign-in is unavailable in the public Wonder build."))
+    }
+
+    private fun maybeShowInterests(act: MainActivity) {
+        // Сначала смотрим, не выбирал ли человек жанры/артистов раньше
+        // (например, слушал гостем, а потом привязал Google). Если выбирал —
+        // не заставляем проходить онбординг заново.
+        ApiClient.guestPrefs { genres, artists ->
+            if (!genres.isNullOrEmpty() || !artists.isNullOrEmpty()) return@guestPrefs
+            ApiClient.authMeText { body ->
+                val events = runCatching {
+                    com.google.gson.JsonParser.parseString(body ?: "")
+                        .asJsonObject.getAsJsonObject("taste")
+                        ?.get("events")?.asInt ?: 0
+                }.getOrDefault(0)
+                if (events <= 0 && !act.isFinishing && !act.isDestroyed) {
+                    act.runOnUiThread { act.authBridgeInterests() }
+                }
+            }
+        }
+    }
+
+    private fun toast(act: MainActivity, msg: String) {
+        android.widget.Toast.makeText(act, msg, android.widget.Toast.LENGTH_LONG).show()
+    }
 
     private fun openSheet(act: MainActivity, register: Boolean) {
         val ctx = act
@@ -563,7 +605,7 @@ object WonderAuth {
             setTextColor(TXT)
             textSize = 15f
             inputType = type
-            typeface = androidx.core.content.res.ResourcesCompat.getFont(ctx, R.font.unbounded_family)
+            typeface = su.gwarden.music.ui.Skin.typeface(ctx)
             setSingleLine(true)
             background = rounded(0xFF1C1C1C.toInt(), STROKE, 16)
             setPadding(dp(ctx, 14), dp(ctx, 12), dp(ctx, 14), dp(ctx, 12))

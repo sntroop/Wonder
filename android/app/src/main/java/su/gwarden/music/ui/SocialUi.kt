@@ -38,12 +38,8 @@ object SocialUi {
     private fun dp(activity: Activity, v: Int): Int =
         (v * activity.resources.displayMetrics.density).toInt()
 
-    private fun font(activity: Activity, bold: Boolean = false): Typeface? {
-        val regular = runCatching {
-            ResourcesCompat.getFont(activity, R.font.unbounded_family)
-        }.getOrNull()
-        return if (bold) Typeface.create(regular, Typeface.BOLD) else regular
-    }
+    private fun font(activity: Activity, bold: Boolean = false): Typeface? =
+        Skin.typeface(activity, bold)
 
     private fun color(activity: Activity, id: Int): Int =
         ContextCompat.getColor(activity, id)

@@ -15,7 +15,7 @@ Source snapshot of the Android client: interface, player, library, offline mode.
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?logo=kotlin&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android&logoColor=white)
 ![minSdk](https://img.shields.io/badge/minSdk-24-0A0A0A)
-![version](https://img.shields.io/badge/version-12.34-0A0A0A)
+![version](https://img.shields.io/badge/version-12.50-0A0A0A)
 ![license](https://img.shields.io/badge/license-source--available-6C4CF1)
 
 </div>
@@ -45,15 +45,18 @@ state.
 | Area | What you get | Status |
 |---|---|---|
 | Playback | ExoPlayer/Media3, background service, media session, queue, next-track prefetch | Included |
-| Library | Tracks, artists, playlists, local collections, search state | Included |
+| Sound | 10-band equalizer, bass, reverb, distortion, tempo/pitch, crossfade | Included |
+| Appearance | Accent color, wallpaper/GIF/video background, blur/dim, custom fonts | Included |
+| Library | Tracks, artists, playlists, local collections, likes | Included |
 | Offline | Download cache, eviction policy, local HTTP stream server | Included |
 | Interface | Custom views, liquid navigation, player sheet, shorts feed, typography | Included |
-| Design system | Dark monochrome palette, Unbounded typeface, 88 drawables, 9 layouts | Included |
+| Design system | Dark monochrome palette, Unbounded typeface, 93 drawables, 9 layouts | Included |
 | Service API | `ApiClient` contract with all public methods | Stubbed |
-| Accounts | VK / SoundCloud / Spotify / Yandex login and token exchange | Not included |
+| Accounts | VK / SoundCloud / Spotify / Yandex / Google login and token exchange | Not included |
 | Recommendations | Home feed, wave, similar tracks, remixes | Not included |
+| Updates | In-app update banner UI | Stubbed |
 
-**49 Kotlin/Java files · ~19.8k lines · 110 resource files.**
+**59 Kotlin/Java files · ~23.3k lines · 121 resource files.**
 
 ## Architecture
 
@@ -82,11 +85,14 @@ is offline.
 | `.../player/PlaybackService.kt` | Foreground media service and notification |
 | `.../player/LocalStreamServer.kt` | Loopback HTTP server for growing cache files |
 | `.../player/ParallelDownloader.kt` | Segmented downloader |
+| `.../audio/` | DSP chain: 10-band EQ, bass, reverb, distortion |
+| `.../ui/Skin.kt`, `.../AppearanceActivity.kt` | Accent, wallpaper, blur/dim, fonts |
 | `.../ui/` | Custom views: liquid nav, equalizer background, artwork tint, adapters |
 | `.../model/` | Track, playlist, library, profile and interest models |
 | `.../offline/Offline.kt` | "Keep on device" downloads and storage limit |
 | `.../api/ApiClient.kt` | Public API contract; stubbed in this snapshot |
 | `.../vk/`, `.../spotify/` | Integration boundaries; disabled in this snapshot |
+| `.../update/` | In-app update UI; network stubbed in this snapshot |
 | `app/src/main/res/` | Themes, drawables, layouts, Unbounded font, icons |
 
 ## Build

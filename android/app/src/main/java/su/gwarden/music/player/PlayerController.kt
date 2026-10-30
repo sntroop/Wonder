@@ -7,6 +7,7 @@ import androidx.media3.common.AudioAttributes as ExoAttr
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.CoroutineScope
@@ -69,6 +70,8 @@ class PlayerController(private val context: Context) {
     private var focusRequest: android.media.AudioFocusRequest? = null
     private var lastErrAudio = false
     private var watchdog: Job? = null
+    /** Тикер кроссфейда (громкость у конца/начала трека). */
+    private var fadeJob: Job? = null
 
     /**
      * Номер попытки воспроизведения. Растёт на каждом новом старте трека.
@@ -78,17 +81,23 @@ class PlayerController(private val context: Context) {
     private var playGen = 0
     private val replacing = HashSet<String>()
 
+    init {
+        // Настройки звука нужны до первого трека: сервис/плеер может подняться
+        // раньше, чем MainActivity успеет их прочитать.
+        runCatching { su.gwarden.music.audio.Fx.load(context) }
+    }
+
     var onState: ((Boolean) -> Unit)? = null
     var onTrackChanged: ((Track?) -> Unit)? = null
     var onError: ((String) -> Unit)? = null
     var onProgress: ((Int, String) -> Unit)? = null
 
-    /** Как достать прямой URL VK. */
+    /** Как достать прямой URL VK с телефона (треки, заблокированные для сервера). */
     var localVkUrl: ((Track) -> String?)? = null
 
     /**
      * Поиск замены треку, который VK/сервер не отдают: та же песня на
-     * SoundCloud. Реализует MainActivity через подбор замены.
+     * SoundCloud. Реализует MainActivity через /api/replace.
      */
     var findReplacement: ((Track, (Track?) -> Unit) -> Unit)? = null
 
@@ -97,7 +106,7 @@ class PlayerController(private val context: Context) {
 
     val isPlaying: Boolean get() = runCatching { exo?.isPlaying == true }.getOrDefault(false)
 
-    /** VK точно не сыграет: VK недоступен И рабочего токена нет. */
+    /** VK точно не сыграет: мост сообщил о смерти И рабочего токена нет. */
     private fun vkVeto(): Boolean =
         su.gwarden.music.vk.VkRelay.vkDead && !su.gwarden.music.vk.VkApi.hasToken()
 
@@ -120,9 +129,9 @@ class PlayerController(private val context: Context) {
     }
 
     fun play(track: Track, queue: List<Track>) {
-        // Без рабочего VK на телефоне VK-треки не заиграют:
+        // Без рабочего VK на телефоне VK-треки не заиграют вообще: сервер
         // ходит в VK через этот же телефон. Не начинаем - иначе бесконечные
-        // 401 на поток и бит-карту и «тормоза».
+        // 401 на /api/stream и /api/beat и «тормоза».
         // блокируем VK только если он реально мёртв (нет токена), а не
         // из-за одной случайной ошибки: иначе «В моей музыке играет только SC»
         val vkDead = vkVeto()
@@ -166,7 +175,11 @@ class PlayerController(private val context: Context) {
         playGen++
         flushFeedback()
         downloadJob?.cancel()
+        runCatching { activeDownload?.close() }
         activeDownload = null
+        stopLocalServer()
+        fadeJob?.cancel()
+        runCatching { exo?.volume = 1f }
         runCatching { exo?.stop() }
         releasePlayer()
         queue = emptyList()
@@ -337,6 +350,13 @@ class PlayerController(private val context: Context) {
         Diag.add("fb add ${t.id}")
     }
 
+    /** Явный лайк из плеера — сильнее «добавил в библиотеку». */
+    fun feedbackLike(t: Track) {
+        ApiClient.feedback("like", t.source, t.id, t.artist, 0, 0, t.duration * 1000,
+            0f, playSource, hour())
+        Diag.add("fb like ${t.id}")
+    }
+
     /** Явное «не нравится» - самый сильный сигнал против. */
     fun feedbackDislike(t: Track) {
         ApiClient.feedback("dislike", t.source, t.id, t.artist, 0, 0, t.duration * 1000,
@@ -475,7 +495,8 @@ class PlayerController(private val context: Context) {
         }
         // Замена «slowed»-версии может оказаться speed-up'ом (и наоборот):
         // подгоняем темп, чтобы трек звучал с той же скоростью, что в VK.
-        runCatching { exo?.setPlaybackSpeed(track.speed.coerceIn(0.7f, 1.45f)) }
+        // Пользовательский темп/тон добавляется сверху (см. applyRate).
+        runCatching { applyRate() }
         // Офлайн: если трек скачан «навсегда» - играем файл с телефона.
         // Ни сети, ни VK, ни сервера: работает в метро и при мёртвом VK.
         // САМО ЗАПУСКАНИЕ делаем НИЖЕ, вместе с обновлением интерфейса:
@@ -552,7 +573,7 @@ class PlayerController(private val context: Context) {
 
         // Очень длинный трек (микс/подкаст/альбом одним файлом) НЕ качаем
         // целиком: 72-минутный файл - это сотни мегабайт. Играем потоком
-        // (прямой поток с Range, без кэша на диск).
+        // (сервер с direct=1 проксирует байты с Range, без кэша на диск).
         if (track.duration > LONG_TRACK_SEC && !isCached(track)) {
             Log.i(TAG, "long track ${track.id} (${track.duration}s) -> direct stream")
             Diag.add("long stream ${track.id}")
@@ -585,7 +606,7 @@ class PlayerController(private val context: Context) {
                     return@launch
                 }
 
-                // Трек может быть недоступен по региону -
+                // Сервер (Германия) этот трек не отдаёт (ограничение региона) -
                 // сразу спрашиваем прямую ссылку у VK С ТЕЛЕФОНА, не тратя
                 // время на заведомо неудачную загрузку
                 if (track.playable == false && track.source == "vk") {
@@ -605,10 +626,59 @@ class PlayerController(private val context: Context) {
                     return@launch
                 }
 
-                // СКАЧИВАЕМ ЦЕЛИКОМ и играем с диска (одним соединением,
-                // с докачкой). На этом телефоне MediaPlayer падает с -38 на
-                // http-потоке, а готовый файл играет.
+                // ПРОГРЕССИВНО: играем с локального сервера, как только
+                // пришли первые ~200 КБ. Остальное докачивается 12
+                // параллельными Range-запросами (путь душит одно длинное
+                // соединение). Раньше ждали ВЕСЬ файл — 3 МБ на 70 КБ/с
+                // превращались в 40-60 секунд тишины.
                 runCatching { if (dest.exists()) dest.delete() }
+                val dl = withContext(Dispatchers.IO) {
+                    downloader.download(url, dest) { avail, total ->
+                        if (total > 0 && total != Long.MAX_VALUE) {
+                            bufferedPct = ((avail * 100) / total).toInt().coerceIn(0, 100)
+                        }
+                    }
+                }
+                if (gen != playGen) {
+                    dl.close()
+                    return@launch
+                }
+                activeDownload = dl
+                val server = LocalStreamServer(dl)
+                if (server.start()) {
+                    localServer = server
+                    Diag.add("progressive ${track.id} :${server.port}")
+                    ApiClient.log("prog", "start t=${track.id} :${server.port}")
+                    onProgress?.invoke(0, "Играю: ${track.title}")
+                    playLocalUrl("http://127.0.0.1:${server.port}/wonder")
+                    // сторож старта включаем только когда реально пошли байты:
+                    // сервер может ещё докачивать трек к себе
+                    scope.launch {
+                        val avail = withContext(Dispatchers.IO) { dl.awaitBytes(96 * 1024, 60_000) }
+                        if (gen == playGen && avail >= 0) armWatchdog(gen, track)
+                    }
+                    // ждём полной докачки только чтобы поставить .ok (кэш)
+                    while (isActive) {
+                        delay(500)
+                        if (gen != playGen) return@launch
+                        val total = dl.totalSize()
+                        val avail = dl.availableBytes()
+                        if (total > 0) {
+                            val pct = ((avail * 100) / total).toInt().coerceIn(0, 100)
+                            bufferedPct = pct
+                            if (avail >= total) {
+                                runCatching { okMarker.writeText("ok") }
+                                break
+                            }
+                        }
+                        if (dl.failed) break
+                    }
+                    prefetchNext()
+                    notifyReady()
+                    return@launch
+                }
+                // локальный сервер не поднялся (редко) - старый путь целиком
+                dl.close()
                 val done = withContext(Dispatchers.IO) {
                     fetchWholeBlocking(url, dest) { pct ->
                         bufferedPct = pct
@@ -641,7 +711,7 @@ class PlayerController(private val context: Context) {
                 Log.e(TAG, "start failed: ${e.message}")
                 ApiClient.log("dl_fail", "${e.message} t=${track.id}")
                 Diag.add("dl_fail ${e.message} t=${track.id}")
-                // трек закрыт по региону - пробуем
+                // сервер не смог (трек закрыт для его региона) - пробуем
                 // спросить прямую ссылку у VK С ТЕЛЕФОНА
                 val direct = withContext(Dispatchers.IO) {
                     runCatching { localVkUrl?.invoke(track) }.getOrNull()
@@ -879,6 +949,9 @@ class PlayerController(private val context: Context) {
         if (e != null) return e
         val np = ExoPlayer.Builder(context)
             .setHandleAudioBecomingNoisy(true)
+            // DSP-цепочка Wonder внутри аудиосинка (10 полос, бас, реверб,
+            // дистошн). Без фабрики ExoPlayer играл бы «сырой» звук.
+            .setRenderersFactory(su.gwarden.music.audio.FxRenderersFactory(context))
             // без wake-режима при погашенном экране воспроизведение встаёт
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
@@ -915,6 +988,7 @@ class PlayerController(private val context: Context) {
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     onState?.invoke(isPlaying)
+                    if (isPlaying) startFadeWatch()
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
@@ -924,10 +998,90 @@ class PlayerController(private val context: Context) {
         }
         exo = np
         // новый плеер - вернуть темп текущего трека (замены slowed/speed-up)
-        runCatching {
-            np.setPlaybackSpeed((current()?.speed ?: 1f).coerceIn(0.7f, 1.45f))
-        }
+        // и пользовательский темп/тон
+        runCatching { applyRate(np) }
         return np
+    }
+
+    /**
+     * Применить скорость и высоту тона.
+     *
+     * Скорость = базовая скорость трека (подмена slowed/speed-up) × темп из
+     * настроек. Тон — независимый множитель из полутонов. ExoPlayer считает
+     * оба параметра в SonicAudioProcessor, поэтому темп не тянет за собой тон.
+     */
+    fun applyRate(p: ExoPlayer? = exo) {
+        val pl = p ?: return
+        val s = su.gwarden.music.audio.Fx.settings
+        val base = (current()?.speed ?: 1f).coerceIn(0.7f, 1.45f)
+        val speed = (base * s.tempo).coerceIn(0.25f, 4f)
+        val pitch = su.gwarden.music.audio.semitonesToRatio(s.semitones).coerceIn(0.25f, 4f)
+        runCatching {
+            pl.playbackParameters = PlaybackParameters(speed, pitch)
+        }
+    }
+
+    /** Настройки звука поменялись в UI — применяем без перезапуска трека. */
+    fun refreshFx() {
+        applyRate()
+        if (su.gwarden.music.audio.Fx.settings.crossfade <= 0) {
+            runCatching { exo?.volume = 1f }
+        }
+        startFadeWatch()
+    }
+
+    /**
+     * Кроссфейд на границе треков.
+     *
+     * Полноценное наложение двух треков требует второго плеера и ломает
+     * очередь/предзагрузку, поэтому здесь «плавный переход»: за N секунд до
+     * конца громкость уходит в ноль, а новый трек въезжает с нуля. Для слуха
+     * это тот же эффект, но без двойного декодирования и гонок загрузки.
+     */
+    private fun startFadeWatch() {
+        fadeJob?.cancel()
+        if (su.gwarden.music.audio.Fx.settings.crossfade <= 0) {
+            runCatching { exo?.volume = 1f }
+            return
+        }
+        fadeJob = scope.launch {
+            while (isActive) {
+                val p = exo
+                if (p == null) {
+                    delay(300)
+                    continue
+                }
+                val cf = su.gwarden.music.audio.Fx.settings.crossfade * 1000
+                if (cf <= 0) {
+                    if (p.volume != 1f) p.volume = 1f
+                    delay(300)
+                    continue
+                }
+                val d = duration
+                val pos = position
+                if (d <= 0) {
+                    delay(200)
+                    continue
+                }
+                val hasNext = queue.size > index + 1
+                val rem = d - pos
+                val fadeOutFrom = if (d > cf * 3) cf else d / 3
+                when {
+                    // затухание к концу трека
+                    hasNext && rem in 0..fadeOutFrom -> {
+                        val v = (rem.toFloat() / fadeOutFrom).coerceIn(0f, 1f)
+                        if (kotlin.math.abs(p.volume - v) > 0.01f) p.volume = v
+                    }
+                    // нарастание в начале
+                    pos < cf -> {
+                        val v = (pos.toFloat() / (cf * 0.6f)).coerceIn(0f, 1f)
+                        if (kotlin.math.abs(p.volume - v) > 0.01f) p.volume = v
+                    }
+                    else -> if (p.volume < 1f) p.volume = 1f
+                }
+                delay(50)
+            }
+        }
     }
 
     /** Полностью освободить плеер (после сбоя / при выходе). */
@@ -1070,6 +1224,7 @@ class PlayerController(private val context: Context) {
     fun destroy() {
         flushFeedback()
         fbTicker?.cancel()
+        fadeJob?.cancel()
         playGen++
         abandonFocus()
         watchdog?.cancel()

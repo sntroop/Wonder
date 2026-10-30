@@ -118,15 +118,51 @@ class ParallelDownloader {
             }
         }
 
+        /**
+         * Читает с ЛЮБОГО места, а не только из непрерывного начала.
+         *
+         * Это важно для шортсов: плеер прыгает в середину трека (дроп), и
+         * если нужный сегмент уже скачался, его можно отдавать сразу —
+         * даже когда предыдущие сегменты ещё в пути.
+         */
         override fun readAt(pos: Long, len: Int): ByteArray {
             synchronized(lock) {
-                val avail = availableBytes()
-                val canRead = (avail - pos).coerceIn(0, len.toLong()).toInt()
+                val s = segments.firstOrNull { pos >= it.from && pos < it.to }
+                    ?: return ByteArray(0)
+                val canRead = minOf(
+                    len.toLong(),
+                    s.filled - (pos - s.from),
+                    s.to - pos,
+                ).toInt()
                 if (canRead <= 0) return ByteArray(0)
                 val buf = ByteArray(canRead)
                 raf.seek(pos)
                 raf.readFully(buf)
                 return buf
+            }
+        }
+
+        /** Есть ли уже байт по смещению [pos] (для ожидания в локальном сервере). */
+        fun readableAt(pos: Long): Boolean = synchronized(lock) {
+            val s = segments.firstOrNull { pos >= it.from && pos < it.to } ?: return false
+            s.filled > pos - s.from
+        }
+
+        /** Ждём конкретное смещение — не требуя непрерывного начала файла. */
+        fun awaitAt(pos: Long, timeoutMs: Long): Boolean {
+            val deadline = System.currentTimeMillis() + timeoutMs
+            synchronized(lock) {
+                while (true) {
+                    if (readableAt(pos)) return true
+                    if (failed || closed) return false
+                    val left = deadline - System.currentTimeMillis()
+                    if (left <= 0) return false
+                    try {
+                        lock.wait(minOf(left, 300))
+                    } catch (e: InterruptedException) {
+                        return false
+                    }
+                }
             }
         }
 

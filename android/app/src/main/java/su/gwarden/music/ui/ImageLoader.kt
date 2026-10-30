@@ -22,9 +22,9 @@ import java.io.File
 
 /**
  * Свой загрузчик обложек вместо Glide: у Glide жёсткий таймаут 2.5с, из-за
- * которого картинки через прокси не успевали и карточки
+ * которого картинки через наш прокси (/api/img) не успевали и карточки
  * оставались пустыми. Здесь: 3 попытки, человеческие таймауты, память-кэш,
- * скругление углов и отчёт об ошибках, чтобы видеть
+ * скругление углов и отчёт об ошибках на сервер (/api/log), чтобы видеть
  * причину без adb.
  */
 object ImageLoader {
@@ -304,8 +304,19 @@ object ImageLoader {
         return null
     }
 
-    /** В публичной сборке отчёты никуда не отправляются. */
+    /** Отчёт об ошибке на сервер - чтобы разбираться без logcat. */
     private fun report(url: String, err: String) {
+        if (reported.incrementAndGet() > 15) return
+        runCatching {
+            val u = url.replace("\\", "").replace("\"", "").take(600)
+            val e = err.replace("\"", "'").take(200)
+            val body = """{"url":"$u","err":"$e"}"""
+            val req = Request.Builder()
+                .url(ApiClient.baseUrl + "/api/log")
+                .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+                .build()
+            client.newCall(req).execute().close()
+        }
     }
 
     private fun decode(bytes: ByteArray, target: Int): Bitmap? {

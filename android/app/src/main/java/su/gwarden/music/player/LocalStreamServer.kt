@@ -133,13 +133,20 @@ class LocalStreamServer(
                         val want = minOf(buf.size.toLong(), end - pos + 1).toInt()
                         val got = download.readAt(pos, want)
                         if (got.isEmpty()) {
-                            // Ждём следующий чанк
-                            val avail = download.awaitBytes(pos + 1, 20_000)
-                            if (avail < 0) {
-                                Log.w(TAG, "timeout waiting for data at $pos")
-                                break
+                            // Ждём именно этот сегмент (дроп в середине трека
+                            // может приехать раньше начала файла)
+                            if (download is ParallelDownloader.Download) {
+                                if (!download.awaitAt(pos, 20_000)) {
+                                    Log.w(TAG, "timeout waiting for data at $pos")
+                                    break
+                                }
+                            } else {
+                                val avail = download.awaitBytes(pos + 1, 20_000)
+                                if (avail < 0) {
+                                    Log.w(TAG, "timeout waiting for data at $pos")
+                                    break
+                                }
                             }
-                            if (avail <= pos) continue
                             continue
                         }
                         out.write(got, 0, got.size)
@@ -153,8 +160,7 @@ class LocalStreamServer(
                     while (true) {
                         val got = download.readAt(pos, buf.size)
                         if (got.isEmpty()) {
-                            val avail = download.awaitBytes(pos + 1, 20_000)
-                            if (avail < 0) break
+                            if (!download.awaitAt(pos, 20_000)) break
                             continue
                         }
                         out.write((got.size.toString(16) + "\r\n").toByteArray())

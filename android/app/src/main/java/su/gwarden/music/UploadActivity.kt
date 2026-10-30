@@ -17,7 +17,7 @@ import su.gwarden.music.api.ApiClient
 
 /**
  * Загрузка своего трека: аудио + обложка + название + жанр + дроп для шортсов.
- * Разрешён один трек в 24 часа.
+ * Сервер разрешает один трек в 24 часа.
  */
 class UploadActivity : AppCompatActivity() {
 
@@ -68,9 +68,11 @@ class UploadActivity : AppCompatActivity() {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        su.gwarden.music.ui.Skin.applyTheme(this)
         super.onCreate(savedInstanceState)
         ApiClient.init(this)
         setContentView(R.layout.activity_upload)
+        su.gwarden.music.ui.Skin.apply(this)
 
         findViewById<View>(R.id.upload_back).setOnClickListener { finish() }
         findViewById<View>(R.id.upload_pick).setOnClickListener {

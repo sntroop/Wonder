@@ -2,7 +2,7 @@ package su.gwarden.music.model
 
 import com.google.gson.annotations.SerializedName
 
-/** Жанр-интерес: id используется как семя волны, img - обложка карточки. */
+/** Жанр-интерес: id уходит на сервер как семя волны, img - обложка карточки. */
 data class InterestItem(
     @SerializedName("id") val id: String = "",
     @SerializedName("title") val title: String = "",

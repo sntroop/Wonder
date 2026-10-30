@@ -3,7 +3,7 @@ package su.gwarden.music;
 /* compiled from: MainActivity.kt */
 /* loaded from: classes7.dex */
 public final class MainActivity extends androidx.appcompat.app.AppCompatActivity {
-    public static final java.lang.String APP_VER = "12.34";
+    public static final java.lang.String APP_VER = "12.45";
     private final int REQ_COVER;
     private su.gwarden.music.ui.TrackAdapter adapter;
     private java.lang.String backTab;
@@ -67,6 +67,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     private final int[] navIcons;
     private final int[] navLabels;
     private android.view.View nowAdd;
+    private android.widget.ImageButton nowLike;
     private kotlin.jvm.functions.Function1<? super su.gwarden.music.model.Track, kotlin.Unit> nowBind;
     private android.view.View nowNext;
     private boolean onWave;
@@ -133,8 +134,12 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     /* JADX INFO: Access modifiers changed from: protected */
     @Override // androidx.fragment.app.FragmentActivity, androidx.activity.ComponentActivity, androidx.core.app.ComponentActivity, android.app.Activity
     public void onCreate(android.os.Bundle savedInstanceState) {
+        // Шрифт/тема читаются при создании вьюх — строго до super.onCreate.
+        su.gwarden.music.ui.Skin.INSTANCE.applyTheme(this);
+        su.gwarden.music.audio.Fx.INSTANCE.load(this);
         super.onCreate(savedInstanceState);
         setContentView(su.gwarden.music.R.layout.activity_main);
+        su.gwarden.music.ui.UpdateBanner.INSTANCE.attach(this);
         initSwipe();
         this.searchTypes = findViewById(su.gwarden.music.R.id.search_types);
         this.rowAdapter = new su.gwarden.music.ui.RowAdapter(
@@ -213,13 +218,13 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 return kotlin.Unit.INSTANCE;
             }
         });
-        // Сессия VK истекла. Не показываем
-        // пустоту - молча открываем вход в VK. Если сессия в WebView жива,
-        // он закроется сам за пару секунд и всё поедет дальше.
+        // Сессия Wonder истекла (401 «need login»): показываем ОБЩИЙ экран
+        // входа (VK / Google / пароль), а не сразу VK. Раньше Google-аккаунт
+        // без VK при любом 401 выбрасывало именно на VK-вход.
         su.gwarden.music.api.ApiClient.INSTANCE.setOnAuthExpired(new kotlin.jvm.functions.Function0<kotlin.Unit>() {
             @Override
             public kotlin.Unit invoke() {
-                MainActivity.this.onVkSessionLost();
+                MainActivity.this.showLoginScreen();
                 return kotlin.Unit.INSTANCE;
             }
         });
@@ -711,8 +716,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             kotlin.jvm.internal.Intrinsics.throwUninitializedPropertyAccessException("player");
             playerController5 = null;
         }
-        // Прямая ссылка на VK-трек.
-        // поток (VK недоступен/трек закрыт по региону), плеер
+        // Прямая ссылка на VK-трек С ТЕЛЕФОНА: когда сервер не может отдать
+        // поток (мост занят/не ответил/трек закрыт для Германии), плеер
         // спрашивает ссылку у VK локально и играет напрямую. Раньше этот
         // обработчик НЕ БЫЛ подключён - фоллбэк существовал только в коде.
         try {
@@ -1215,7 +1220,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     }
 
     /**
-     * Онбординг гостя: жанры + любимые артисты.
+     * Онбординг гостя: жанры + любимые артисты. Сохраняем на сервере,
      * оттуда волна и берёт семена.
      */
     private final void showGuestInterests() {
@@ -1239,7 +1244,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 });
     }
 
-    /** Хелперы для WonderAuth (Kotlin): оверлей входа/онбординга. */
+    /** Мостики для WonderAuth (Kotlin): оверлей входа/онбординга. */
     public final void authBridgeOverlay(android.widget.FrameLayout v) {
         this.loginOverlay = v;
     }
@@ -1279,8 +1284,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     }
 
     /**
-     * Сессия VK истекла. Один раз пробуем тихо
-     * обновить её, иначе - экран входа.
+     * Сессия VK умерла (сервер ответил 401). Один раз пробуем тихо
+     * перелогиниться через WebView (там живы куки VK), иначе - экран входа.
      */
     private final void onVkSessionLost() {
         if (this.vkFixing || this.loginOverlay != null) return;
@@ -1302,7 +1307,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         }
     }
 
-    /** Диагностика разметки: кто где стоит и какого размера. */
+    /** Диагностика разметки: кто где стоит и какого размера (шлём на сервер). */
     private final void dumpLayout() {
         try {
             android.view.ViewGroup content =
@@ -1498,6 +1503,23 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     public final void onLoggedIn(java.lang.String hello) {
         hideLoginScreen();
         showPill(hello);
+        // Смена аккаунта: старые списки в памяти принадлежали ПРЕДЫДУЩЕМУ
+        // пользователю. Без очистки «Моя музыка» показывала кэш myTracks
+        // (loadMyMusic при непустом списке вообще не ходил на сервер),
+        // и после входа через Google человек видел чужие треки.
+        this.myTracks = new java.util.ArrayList<>();
+        this.mineIds.clear();
+        this.waveQueue = kotlin.collections.CollectionsKt.emptyList();
+        this.similarQueue = kotlin.collections.CollectionsKt.emptyList();
+        this.similarSeed = null;
+        this.onWave = false;
+        this.feedBlocks = new java.util.ArrayList<>();
+        try {
+            if (this.adapter != null) {
+                this.adapter.setMineIds(this.mineIds);
+            }
+        } catch (java.lang.Throwable ignored) {
+        }
         su.gwarden.music.vk.VkRelay.INSTANCE.start();
         su.gwarden.music.model.LocalLibrary.INSTANCE.reset(this, libPrefix());
         su.gwarden.music.model.LocalPlaylists.INSTANCE.reset(this, libPrefix());
@@ -1663,7 +1685,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         return kotlin.Unit.INSTANCE;
     }
 
-    /** Есть ли VK-токен у аккаунта (по данным аккаунта). */
+    /** Есть ли VK-токен у аккаунта (по телу /api/auth/me). */
     static boolean vkHasToken(java.lang.String body) {
         try {
             com.google.gson.JsonObject o = com.google.gson.JsonParser.parseString(body).getAsJsonObject();
@@ -1674,7 +1696,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         }
     }
 
-    /** Отвечает ли VK прямо сейчас (по данным аккаунта). */
+    /** Отвечает ли VK прямо сейчас (по телу /api/auth/me). */
     static boolean vkReady(java.lang.String body) {
         try {
             com.google.gson.JsonObject o = com.google.gson.JsonParser.parseString(body).getAsJsonObject();
@@ -1685,7 +1707,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         }
     }
 
-    /** Подключён ли SoundCloud (по данным аккаунта). */
+    /** Подключён ли SoundCloud (по телу /api/auth/me). */
     static boolean scConnected(java.lang.String body) {
         try {
             com.google.gson.JsonObject o = com.google.gson.JsonParser.parseString(body).getAsJsonObject();
@@ -1696,7 +1718,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         }
     }
 
-    /** Текст карточки аккаунта. */
+    /** Текст карточки аккаунта из JSON /api/auth/me. */
     static java.lang.String accountCardText(java.lang.String body) {
         try {
             com.google.gson.JsonObject o = com.google.gson.JsonParser.parseString(body).getAsJsonObject();
@@ -1751,7 +1773,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             java.lang.String k = (java.lang.String) item$iv;
             boolean on = kotlin.jvm.internal.Intrinsics.areEqual(k, t);
             final int from = this.navColors[i];
-            final int to = on ? androidx.core.view.ViewCompat.MEASURED_STATE_MASK : -9737365;
+            final int to = on ? su.gwarden.music.ui.Skin.INSTANCE.onAccent() : -9737365;
             this.navColors[i] = to;
             final android.widget.ImageView iv = (android.widget.ImageView) findViewById(this.navIcons[i]);
             if (from != to) {
@@ -1771,7 +1793,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 $this$forEachIndexed$iv = $this$forEachIndexed$iv2;
                 iv.setColorFilter(to);
             }
-            ((android.widget.TextView) findViewById(this.navLabels[i])).setTextColor(on ? -1 : -9737365);
+            ((android.widget.TextView) findViewById(this.navLabels[i])).setTextColor(on ? su.gwarden.music.ui.Skin.INSTANCE.getAccent() : -9737365);
             i = index$iv;
             order2 = order;
             $this$forEachIndexed$iv2 = kotlin.collections.CollectionsKt.toList($this$forEachIndexed$iv);
@@ -2168,7 +2190,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                             kotlin.jvm.internal.Intrinsics.throwUninitializedPropertyAccessException("waveArtist");
                             textView6 = null;
                         }
-                        textView6.setText("VK Микс по твоему прослушиванию");
+                        textView6.setText("Моя волна");
                         break;
                     }
                 }
@@ -3103,6 +3125,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             this.pullHint.animate().alpha(1.0f).setDuration(120L).start();
         }
         showPill("Обновляю по твоему вкусу");
+        su.gwarden.music.ui.UpdateBanner.INSTANCE.checkSilent(this);
         this.feedBlocks = new java.util.ArrayList<>();
         this.myArtists = null;
         loadHome(true);
@@ -3426,6 +3449,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         $this$waveHero_u24lambda_u24123.setImageResource(su.gwarden.music.R.drawable.ic_play);
         $this$waveHero_u24lambda_u24123.setColorFilter(androidx.core.view.ViewCompat.MEASURED_STATE_MASK);
         $this$waveHero_u24lambda_u24123.setBackground(getDrawable(su.gwarden.music.R.drawable.bg_circle_white));
+        $this$waveHero_u24lambda_u24123.setTag("accent_play");
         $this$waveHero_u24lambda_u24123.setPadding(dp(16), dp(16), dp(16), dp(16));
         $this$waveHero_u24lambda_u24123.setLayoutParams(new android.widget.LinearLayout.LayoutParams(dp(48), dp(48)));
         card.addView($this$waveHero_u24lambda_u24123);
@@ -3440,7 +3464,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         $this$waveHero_u24lambda_u24125.setTypeface($this$waveHero_u24lambda_u24125.getTypeface(), 1);
         col.addView($this$waveHero_u24lambda_u24125);
         android.widget.TextView $this$waveHero_u24lambda_u24126 = new android.widget.TextView(this);
-        $this$waveHero_u24lambda_u24126.setText("VK Микс · персональное радио");
+        $this$waveHero_u24lambda_u24126.setText("Моя волна");
         $this$waveHero_u24lambda_u24126.setTextSize(12.0f);
         $this$waveHero_u24lambda_u24126.setTextColor(-6645094);
         $this$waveHero_u24lambda_u24126.setPadding(0, dp(2), 0, 0);
@@ -3786,6 +3810,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         tiles.setPadding(dp(16), dp(18), dp(16), 0);
         tiles.addView(libTile("Моя музыка", "Твои треки", su.gwarden.music.R.drawable.ic_music_note,
                 "tracks", v -> showMyTracks()));
+        tiles.addView(libTile("Лайки", "Сердечки из волны и шортсов", su.gwarden.music.R.drawable.ic_heart_fill,
+                "likes", v -> showLikes()));
         tiles.addView(libTile("Артисты", "Кого ты слушаешь", su.gwarden.music.R.drawable.ic_artist,
                 "artists", v -> showArtistsScreen()));
         tiles.addView(libTile("Плейлисты", "Свои и из сервисов", su.gwarden.music.R.drawable.ic_playlist,
@@ -4506,6 +4532,70 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         ic.setAlpha(has ? 0.45f : 1.0f);
     }
 
+    /** Сердечко: залито, если трек реально лайкнут (таблица likes на сервере). */
+    private final void setLikeIcon(android.widget.ImageButton btn, boolean liked) {
+        if (btn == null) {
+            return;
+        }
+        btn.setImageResource(liked
+                ? su.gwarden.music.R.drawable.ic_heart_fill
+                : su.gwarden.music.R.drawable.ic_heart_outline);
+        btn.setColorFilter(liked ? su.gwarden.music.ui.Skin.INSTANCE.getAccent() : -1);
+        btn.setSelected(liked);
+    }
+
+    /** Перепроверить лайк при открытии плеера и при смене трека. */
+    private final void bindNowLike(final android.widget.ImageButton btn,
+                                   final su.gwarden.music.model.Track t) {
+        if (btn == null || t == null) {
+            return;
+        }
+        setLikeIcon(btn, false);
+        su.gwarden.music.api.ApiClient.INSTANCE.likeState(t,
+                new kotlin.jvm.functions.Function1<java.lang.Boolean, kotlin.Unit>() {
+                    @Override
+                    public kotlin.Unit invoke(java.lang.Boolean isLiked) {
+                        final boolean liked = isLiked != null && isLiked;
+                        MainActivity.this.runOnUiThread(new java.lang.Runnable() {
+                            @Override
+                            public void run() {
+                                su.gwarden.music.model.Track cur = null;
+                                try {
+                                    cur = MainActivity.this.player.current();
+                                } catch (java.lang.Throwable ignored) {
+                                }
+                                if (cur != null && cur.getId().equals(t.getId())) {
+                                    setLikeIcon(btn, liked);
+                                }
+                            }
+                        });
+                        return kotlin.Unit.INSTANCE;
+                    }
+                });
+    }
+
+    /** Раздел «Лайки»: всё, что лайкнули в волне, плеере и шортсах. */
+    private final void showLikes() {
+        showPill("Загружаю лайки…");
+        su.gwarden.music.api.ApiClient.INSTANCE.likes(
+                new kotlin.jvm.functions.Function1<java.util.List<su.gwarden.music.model.Track>, kotlin.Unit>() {
+                    @Override
+                    public kotlin.Unit invoke(final java.util.List<su.gwarden.music.model.Track> items) {
+                        MainActivity.this.runOnUiThread(new java.lang.Runnable() {
+                            @Override
+                            public void run() {
+                                if (items == null || items.isEmpty()) {
+                                    showPill("Лайков пока нет");
+                                } else {
+                                    showTracksList("Лайки", items);
+                                }
+                            }
+                        });
+                        return kotlin.Unit.INSTANCE;
+                    }
+                });
+    }
+
     private final void addToMyMusic(su.gwarden.music.model.Track t) {
         if (su.gwarden.music.model.LocalLibrary.INSTANCE.add(t)) {
             su.gwarden.music.player.PlayerController playerController = this.player;
@@ -4745,6 +4835,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         root.addView(col, clp);
         d.setContentView(root);
         d.show();
+        try { su.gwarden.music.ui.Skin.INSTANCE.applyToDialog(d); } catch (java.lang.Throwable ignored) {}
     }
 
     private final void addSortRow(android.widget.LinearLayout col, final android.app.Dialog d,
@@ -5272,7 +5363,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                     kotlin.jvm.internal.Intrinsics.throwUninitializedPropertyAccessException("hSub");
                     textView4 = null;
                 }
-                textView4.setText("VK Микс · по твоему прослушиванию");
+                textView4.setText("Моя волна");
                 if ($play) {
                     playTrack$default(this$0, (su.gwarden.music.model.Track) kotlin.collections.CollectionsKt.first((java.util.List) this$0.waveQueue), this$0.waveQueue, false, 4, null);
                 } else {
@@ -5443,7 +5534,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 } else {
                     textView = textView2;
                 }
-                textView.setText("VK Микс · по твоему прослушиванию");
+                textView.setText("Моя волна");
                 return;
             }
             return;
@@ -5696,6 +5787,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         }
 
         final android.app.Dialog d = new android.app.Dialog(this, su.gwarden.music.R.style.Theme_Wonder_Sheet);
+        su.gwarden.music.ui.Skin.INSTANCE.prepare(d);
         final android.widget.FrameLayout root = new android.widget.FrameLayout(this);
         root.setBackgroundColor(0x99000000);
 
@@ -5805,6 +5897,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             w.setLayout(-1, -1);
         }
         d.show();
+        try { su.gwarden.music.ui.Skin.INSTANCE.applyToDialog(d); } catch (java.lang.Throwable ignored) {}
         card.setTranslationY(dp(90));
         card.setAlpha(0.0f);
         card.animate()
@@ -6424,7 +6517,10 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             this.recycler.setAdapter(this.adapter);
         }
         this.adapter.submit(items, false);
-        showBack("search");
+        // Возврат туда, откуда пришли: из библиотеки — в библиотеку, с главной —
+        // на главную, из поиска — в поиск. Раньше здесь жёстко стоял "search",
+        // поэтому любой плейлист/список из библиотеки возвращал в поиск.
+        showBack(this.tab == null ? "search" : this.tab);
         if (this.hTitle != null) {
             this.hTitle.setText(title);
         }
@@ -6766,7 +6862,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     private final java.lang.String waveModeSubtitle() {
         java.lang.String it;
         java.lang.String it2 = this.similarTitle;
-        return (it2 == null || (it = new java.lang.StringBuilder().append("Волна по ").append(it2).toString()) == null) ? "VK Микс · по твоему прослушиванию" : it;
+        return (it2 == null || (it = new java.lang.StringBuilder().append("Волна по ").append(it2).toString()) == null) ? "Моя волна" : it;
     }
 
     private final void applyWaveMode() {
@@ -7045,57 +7141,180 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     private final void createCloudPlaylist(
             final su.gwarden.music.model.Track track,
             final android.app.Dialog picker) {
+        final android.app.Dialog d = new android.app.Dialog(this);
+        try {
+            su.gwarden.music.ui.Skin.INSTANCE.prepare(d);
+        } catch (java.lang.Throwable ignored) {
+        }
+        d.requestWindowFeature(1);
+
+        final android.widget.FrameLayout outer = new android.widget.FrameLayout(this);
+        outer.setPadding(dp(20), dp(8), dp(20), dp(8));
+
+        final android.widget.LinearLayout card = new android.widget.LinearLayout(this);
+        card.setOrientation(1);
+        card.setBackground(getDrawable(su.gwarden.music.R.drawable.bg_sheet));
+        card.setPadding(dp(20), dp(18), dp(20), dp(16));
+        outer.addView(card, new android.widget.FrameLayout.LayoutParams(-1, -2));
+
+        android.widget.TextView title = new android.widget.TextView(this);
+        title.setText("Новый плейлист");
+        title.setTextSize(20.0f);
+        title.setTextColor(-1);
+        title.setTypeface(title.getTypeface(), 1);
+        card.addView(title);
+
+        android.widget.TextView sub = new android.widget.TextView(this);
+        sub.setText("Дай название — добавим трек и покажем плейлист другим");
+        sub.setTextSize(12.0f);
+        sub.setTextColor(0xFF8A8A8A);
+        sub.setLineSpacing(dp(2), 1.0f);
+        sub.setPadding(0, dp(4), 0, dp(14));
+        card.addView(sub);
+
         final android.widget.EditText input = new android.widget.EditText(this);
         input.setHint("Название плейлиста");
-        input.setTextColor(0xFFFFFFFF);
+        input.setSingleLine(true);
+        input.setTextSize(15.0f);
+        input.setTextColor(-1);
         input.setHintTextColor(0xFF8A8A8A);
-        input.setPadding(dp(18), dp(12), dp(18), dp(12));
+        input.setPadding(dp(16), dp(12), dp(16), dp(12));
         input.setBackgroundResource(su.gwarden.music.R.drawable.bg_field);
-        new android.app.AlertDialog.Builder(this)
-            .setTitle("Новый плейлист")
-            .setView(input)
-            .setPositiveButton("Создать", new android.content.DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(android.content.DialogInterface di, int w) {
-                    String title = input.getText().toString().trim();
-                    if (title.isEmpty()) {
-                        title = "Мой плейлист";
-                    }
-                    su.gwarden.music.api.ApiClient.INSTANCE.createPlaylist(title, "",
-                        new kotlin.jvm.functions.Function1<su.gwarden.music.model.VkPlaylist, kotlin.Unit>() {
-                            @Override
-                            public kotlin.Unit invoke(final su.gwarden.music.model.VkPlaylist pl) {
-                                if (pl == null) {
-                                    runOnUiThread(new java.lang.Runnable() {
-                                        @Override
-                                        public void run() {
-                                            showPill("Не получилось создать");
-                                        }
-                                    });
-                                    return kotlin.Unit.INSTANCE;
-                                }
-                                su.gwarden.music.api.ApiClient.INSTANCE.addToAppPlaylist(
-                                    pl.getId(), track,
-                                    new kotlin.jvm.functions.Function1<java.lang.Boolean, kotlin.Unit>() {
-                                        @Override
-                                        public kotlin.Unit invoke(java.lang.Boolean ok) {
-                                            runOnUiThread(new java.lang.Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    picker.dismiss();
-                                                    showPill("Плейлист «" + pl.getTitle() + "» создан");
-                                                }
-                                            });
-                                            return kotlin.Unit.INSTANCE;
-                                        }
-                                    });
+        card.addView(input, new android.widget.LinearLayout.LayoutParams(-1, dp(50)));
+
+        final android.widget.TextView err = new android.widget.TextView(this);
+        err.setText("Название можно поменять потом");
+        err.setTextSize(11.0f);
+        err.setTextColor(0xFF6E6E6E);
+        err.setPadding(dp(4), dp(8), 0, 0);
+        card.addView(err);
+
+        final android.widget.TextView cancel = new android.widget.TextView(this);
+        cancel.setText("Отмена");
+        cancel.setTextSize(14.5f);
+        cancel.setTextColor(0xFFBEBEBE);
+        cancel.setGravity(17);
+        cancel.setBackground(getDrawable(su.gwarden.music.R.drawable.bg_field));
+        cancel.setOnClickListener(new android.view.View.OnClickListener() {
+            @Override
+            public void onClick(android.view.View v) {
+                d.dismiss();
+            }
+        });
+
+        final android.widget.TextView create = new android.widget.TextView(this);
+        create.setText("Создать");
+        create.setTextSize(14.5f);
+        create.setTypeface(create.getTypeface(), 1);
+        create.setTextColor(0xFF101010);
+        create.setGravity(17);
+        create.setBackground(getDrawable(su.gwarden.music.R.drawable.bg_btn));
+
+        android.widget.LinearLayout row = new android.widget.LinearLayout(this);
+        row.setOrientation(0);
+        android.widget.LinearLayout.LayoutParams rowLp =
+                new android.widget.LinearLayout.LayoutParams(-1, dp(50));
+        rowLp.topMargin = dp(14);
+        row.addView(cancel, new android.widget.LinearLayout.LayoutParams(0, -1, 1.0f));
+        android.widget.LinearLayout.LayoutParams createLp =
+                new android.widget.LinearLayout.LayoutParams(0, -1, 1.4f);
+        createLp.leftMargin = dp(10);
+        row.addView(create, createLp);
+        card.addView(row, rowLp);
+
+        create.setOnClickListener(new android.view.View.OnClickListener() {
+            @Override
+            public void onClick(android.view.View v) {
+                final String titleText = input.getText().toString().trim();
+                if (titleText.isEmpty()) {
+                    err.setText("Введи название плейлиста");
+                    err.setTextColor(0xFFE06A6A);
+                    input.requestFocus();
+                    return;
+                }
+                create.setEnabled(false);
+                create.setText("Создаю…");
+                err.setTextColor(0xFF6E6E6E);
+                err.setText("Создаю плейлист…");
+                su.gwarden.music.api.ApiClient.INSTANCE.createPlaylist(titleText, "",
+                    new kotlin.jvm.functions.Function1<su.gwarden.music.model.VkPlaylist, kotlin.Unit>() {
+                        @Override
+                        public kotlin.Unit invoke(final su.gwarden.music.model.VkPlaylist pl) {
+                            if (pl == null) {
+                                runOnUiThread(new java.lang.Runnable() {
+                                    @Override
+                                    public void run() {
+                                        create.setEnabled(true);
+                                        create.setText("Создать");
+                                        err.setTextColor(0xFFE06A6A);
+                                        err.setText("Не получилось создать — проверь связь");
+                                    }
+                                });
                                 return kotlin.Unit.INSTANCE;
                             }
-                        });
+                            su.gwarden.music.api.ApiClient.INSTANCE.addToAppPlaylist(
+                                pl.getId(), track,
+                                new kotlin.jvm.functions.Function1<java.lang.Boolean, kotlin.Unit>() {
+                                    @Override
+                                    public kotlin.Unit invoke(java.lang.Boolean ok) {
+                                        runOnUiThread(new java.lang.Runnable() {
+                                            @Override
+                                            public void run() {
+                                                if (ok != null && ok) {
+                                                    d.dismiss();
+                                                    try {
+                                                        picker.dismiss();
+                                                    } catch (java.lang.Throwable ignored) {
+                                                    }
+                                                    showPill("Плейлист «" + pl.getTitle() + "» создан");
+                                                } else {
+                                                    create.setEnabled(true);
+                                                    create.setText("Создать");
+                                                    err.setTextColor(0xFFE06A6A);
+                                                    err.setText("Плейлист создан, но трек не добавился");
+                                                }
+                                            }
+                                        });
+                                        return kotlin.Unit.INSTANCE;
+                                    }
+                                });
+                            return kotlin.Unit.INSTANCE;
+                        }
+                    });
+            }
+        });
+
+        d.setContentView(outer);
+        android.view.Window w = d.getWindow();
+        if (w != null) {
+            w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));
+            w.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
+                    | android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+            int width = Math.min(getResources().getDisplayMetrics().widthPixels - dp(40), dp(520));
+            w.setLayout(width, -2);
+            w.setGravity(17);
+            w.setDimAmount(0.6f);
+        }
+        d.show();
+        try {
+            su.gwarden.music.ui.Skin.INSTANCE.applyToDialog(d);
+        } catch (java.lang.Throwable ignored) {
+        }
+        input.requestFocus();
+        input.postDelayed(new java.lang.Runnable() {
+            @Override
+            public void run() {
+                try {
+                    android.view.inputmethod.InputMethodManager imm =
+                            (android.view.inputmethod.InputMethodManager)
+                                    getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+                    if (imm != null) {
+                        imm.showSoftInput(input, 0);
+                    }
+                } catch (java.lang.Throwable ignored) {
                 }
-            })
-            .setNegativeButton("Отмена", null)
-            .show();
+            }
+        }, 160L);
     }
 
     private final su.gwarden.music.model.VkPlaylist localAsVk(su.gwarden.music.model.LocalPlaylist pl) {
@@ -7676,6 +7895,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     private final void showPlaylistPicker(final su.gwarden.music.model.Track track) {
         android.util.DisplayMetrics dm;
         final android.app.Dialog d = new android.app.Dialog(this);
+        su.gwarden.music.ui.Skin.INSTANCE.prepare(d);
         d.requestWindowFeature(1);
         android.widget.LinearLayout $this$showPlaylistPicker_u24lambda_u24249 = new android.widget.LinearLayout(this);
         $this$showPlaylistPicker_u24lambda_u24249.setOrientation(1);
@@ -7789,6 +8009,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));
         }
         d.show();
+        try { su.gwarden.music.ui.Skin.INSTANCE.applyToDialog(d); } catch (java.lang.Throwable ignored) {}
         android.view.Window window2 = d.getWindow();
         if (window2 != null) {
             window2.setGravity(81);
@@ -7936,6 +8157,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
 
     private final void showNewPlaylistDialog(final su.gwarden.music.model.Track track) {
         final android.app.Dialog d = new android.app.Dialog(this);
+        su.gwarden.music.ui.Skin.INSTANCE.prepare(d);
         d.requestWindowFeature(1);
         android.view.View root = getLayoutInflater().inflate(su.gwarden.music.R.layout.dialog_new_playlist, (android.view.ViewGroup) null);
         final android.widget.ImageView cover = (android.widget.ImageView) root.findViewById(su.gwarden.music.R.id.np_cover);
@@ -7974,6 +8196,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));
         }
         d.show();
+        try { su.gwarden.music.ui.Skin.INSTANCE.applyToDialog(d); } catch (java.lang.Throwable ignored) {}
         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
         android.view.Window window2 = d.getWindow();
         if (window2 != null) {
@@ -8374,13 +8597,29 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     /* JADX WARN: Removed duplicated region for block: B:24:0x006d A[Catch: all -> 0x00ab, TryCatch #1 {all -> 0x00ab, blocks: (B:16:0x0043, B:18:0x005f, B:24:0x006d, B:25:0x00a4, B:29:0x0084, B:31:0x0088, B:33:0x008d, B:38:0x0097), top: B:15:0x0043 }] */
     /* JADX WARN: Removed duplicated region for block: B:29:0x0084 A[Catch: all -> 0x00ab, TryCatch #1 {all -> 0x00ab, blocks: (B:16:0x0043, B:18:0x005f, B:24:0x006d, B:25:0x00a4, B:29:0x0084, B:31:0x0088, B:33:0x008d, B:38:0x0097), top: B:15:0x0043 }] */
     @Override // androidx.fragment.app.FragmentActivity, android.app.Activity
+    public void onPause() {
+        super.onPause();
+        try {
+            su.gwarden.music.ui.Skin.INSTANCE.pauseBackground(this);
+        } catch (java.lang.Throwable ignored) {
+        }
+    }
+
+    @Override // androidx.fragment.app.FragmentActivity, android.app.Activity
     /*
         Code decompiled incorrectly, please refer to instructions dump.
         To view partially-correct add '--show-bad-code' argument
     */
     public void onResume() {
         super.onResume();
-        loadMyAvatar();
+        // оформление могло поменяться в «Внешнем виде» — перечитываем
+        try {
+            su.gwarden.music.ui.Skin.INSTANCE.apply(this);
+            su.gwarden.music.ui.Skin.INSTANCE.resumeBackground(this);
+            if (this.tab != null) tintNavIcons(this.tab);
+            su.gwarden.music.ui.UpdateBanner.INSTANCE.onResume(this);
+        } catch (java.lang.Throwable ignored) {
+        }        loadMyAvatar();
         // трек удалили в профиле - лента не должна показывать его из кэша
         try {
             android.content.SharedPreferences sp = getSharedPreferences("music_player", 0);
@@ -8647,10 +8886,21 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     private void renderTint(int c) {
         android.view.View root = findViewById(su.gwarden.music.R.id.app_root);
         if (root != null) {
-            android.graphics.drawable.GradientDrawable base =
-                new android.graphics.drawable.GradientDrawable(
+            // Когда включены обои/GIF/видео — НЕ закрашиваем их непрозрачным
+            // градиентом, иначе фон «исчезает» на главной (в плеере он живёт
+            // в отдельном окне и поэтому был виден). Здесь только тонировка.
+            boolean bgOn = su.gwarden.music.ui.Skin.INSTANCE.isBgActive();
+            android.graphics.drawable.GradientDrawable base;
+            if (bgOn) {
+                int tint = c & 0x00FFFFFF;
+                base = new android.graphics.drawable.GradientDrawable(
+                    android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[]{ (0x59 << 24) | tint, (0x33 << 24) | tint, 0xCC000000 });
+            } else {
+                base = new android.graphics.drawable.GradientDrawable(
                     android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
                     new int[]{blend(0xFF000000, c, 0.80f), blend(0xFF000000, c, 0.34f), 0xFF000000});
+            }
             android.graphics.drawable.GradientDrawable glow =
                 new android.graphics.drawable.GradientDrawable();
             glow.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
@@ -8658,7 +8908,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             glow.setGradientRadius((float) dp(330));
             glow.setGradientCenter(0.5f, 0.0f);
             glow.setColors(new int[]{
-                (0x3A << 24) | (c & 0x00FFFFFF),
+                ((bgOn ? 0x22 : 0x3A) << 24) | (c & 0x00FFFFFF),
                 (0x00 << 24) | (c & 0x00FFFFFF)});
             android.graphics.drawable.LayerDrawable layer =
                 new android.graphics.drawable.LayerDrawable(
@@ -8686,6 +8936,9 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
 
     /** Аватар в верхней плашке: тот, что человек поставил в профиле. */
     private final void loadMyAvatar() {
+        if (!su.gwarden.music.api.ApiClient.INSTANCE.getLoggedIn()) {
+            return;
+        }
         try {
             su.gwarden.music.api.ApiClient.INSTANCE.profile(0, json -> {
                 try {
@@ -8790,6 +9043,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         if (this.nowBind != null) {
             this.nowBind.invoke(track);
         }
+        bindNowLike(this.nowLike, track);
         loadBeat(track);
         try {
             getSharedPreferences("music_player", 0).edit()
@@ -8854,12 +9108,13 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             return;
         }
         final android.app.Dialog d = new android.app.Dialog(this, su.gwarden.music.R.style.Theme_Wonder_Fullscreen);
+        su.gwarden.music.ui.Skin.INSTANCE.prepare(d);
         d.setContentView(su.gwarden.music.R.layout.dialog_now);
         android.view.Window $this$showNowPlaying_u24lambda_u24309 = d.getWindow();
         if ($this$showNowPlaying_u24lambda_u24309 != null) {
             $this$showNowPlaying_u24lambda_u24309.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));
             $this$showNowPlaying_u24lambda_u24309.addFlags(2);
-            $this$showNowPlaying_u24lambda_u24309.setDimAmount(0.45f);
+            $this$showNowPlaying_u24lambda_u24309.setDimAmount(su.gwarden.music.ui.Skin.INSTANCE.isBgActive() ? 0.22f : 0.45f);
         }
         final android.view.View card = d.findViewById(su.gwarden.music.R.id.now_card);
         final android.view.View coverBox = d.findViewById(su.gwarden.music.R.id.now_cover_box);
@@ -8947,6 +9202,20 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 su.gwarden.music.MainActivity.showNowPlaying$lambda$317(su.gwarden.music.MainActivity.this, d, view);
             }
         });
+        // Звук: 10-полосный эквалайзер и вся обработка поверх играющего трека
+        try {
+            android.view.View fxBtn = d.findViewById(su.gwarden.music.R.id.now_fx);
+            if (fxBtn != null) {
+                fxBtn.setOnClickListener(new android.view.View.OnClickListener() {
+                    @Override
+                    public final void onClick(android.view.View view) {
+                        su.gwarden.music.ui.FxSheet.INSTANCE.show(
+                                MainActivity.this, MainActivity.this.player);
+                    }
+                });
+            }
+        } catch (java.lang.Throwable ignored) {
+        }
         // лайк / комментарии по таймкодам / текст / скачать
         try {
             su.gwarden.music.ui.SocialUi.INSTANCE.bind(
@@ -9008,6 +9277,61 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 su.gwarden.music.MainActivity.showNowPlaying$flip(su.gwarden.music.MainActivity.this, coverBox, title, artist, cover, card, bgDrawable, strip, cur, durTx, false);
             }
         });
+        // лайк / дизлайк прямо у кнопок управления — сигналы для рекомендаций
+        try {
+            final su.gwarden.music.model.Track liked = track;
+            android.view.View dislikeBtn = d.findViewById(su.gwarden.music.R.id.now_dislike);
+            if (dislikeBtn != null) {
+                dislikeBtn.setOnClickListener(new android.view.View.OnClickListener() {
+                    @Override
+                    public final void onClick(android.view.View view) {
+                        try {
+                            MainActivity.this.player.feedbackDislike(liked);
+                        } catch (java.lang.Throwable ignored) {
+                        }
+                        showPill("Не понравилось — учту");
+                        try {
+                            d.dismiss();
+                        } catch (java.lang.Throwable ignored) {
+                        }
+                        try {
+                            MainActivity.this.player.next(true);
+                        } catch (java.lang.Throwable ignored) {
+                        }
+                    }
+                });
+            }
+            final android.widget.ImageButton likeBtn =
+                    (android.widget.ImageButton) d.findViewById(su.gwarden.music.R.id.now_like);
+            this.nowLike = likeBtn;
+            bindNowLike(likeBtn, liked);
+            if (likeBtn != null) {
+                likeBtn.setOnClickListener(new android.view.View.OnClickListener() {
+                    @Override
+                    public final void onClick(android.view.View view) {
+                        su.gwarden.music.api.ApiClient.INSTANCE.toggleLikeSimple(
+                                liked, new kotlin.jvm.functions.Function1<java.lang.Boolean, kotlin.Unit>() {
+                                    @Override
+                                    public kotlin.Unit invoke(java.lang.Boolean isLiked) {
+                                        final boolean likedNow = isLiked != null && isLiked;
+                                        MainActivity.this.runOnUiThread(new java.lang.Runnable() {
+                                            @Override
+                                            public void run() {
+                                                setLikeIcon(likeBtn, likedNow);
+                                                showPill(likedNow
+                                                        ? "В лайках — рекомендации обновятся"
+                                                        : "Убрано из лайков");
+                                            }
+                                        });
+                                        return kotlin.Unit.INSTANCE;
+                                    }
+                                });
+                    }
+                });
+            }
+        } catch (java.lang.Throwable ignored) {
+        }
+
         final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
         final java.lang.Runnable r8 = new java.lang.Runnable() { // from class: java.lang.Runnable
             @Override // java.lang.Runnable
@@ -9112,6 +9436,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         d.setOnDismissListener(new android.content.DialogInterface.OnDismissListener() { // from class: su.gwarden.music.MainActivity$$ExternalSyntheticLambda42
             @Override // android.content.DialogInterface.OnDismissListener
             public final void onDismiss(android.content.DialogInterface dialogInterface) {
+                MainActivity.this.nowLike = null;
                 su.gwarden.music.MainActivity.showNowPlaying$lambda$333(handler, r8, MainActivity.this, dialogInterface);
             }
         });
@@ -9123,6 +9448,13 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             }
         });
         d.show();
+        try { su.gwarden.music.ui.Skin.INSTANCE.applyToDialog(d); } catch (java.lang.Throwable ignored) {}
+        try {
+            su.gwarden.music.ui.Skin.INSTANCE.installDialogBackground(d);
+            su.gwarden.music.ui.Skin.INSTANCE.applyAccent(
+                    d.getWindow() != null ? d.getWindow().getDecorView() : null);
+        } catch (java.lang.Throwable ignored) {
+        }
     }
 
     /* JADX INFO: Access modifiers changed from: private */
@@ -9561,6 +9893,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     /** Скачанные на телефон треки: играют без интернета и без VK. */
     private final void showDownloads() {
         final android.app.Dialog d = new android.app.Dialog(this, su.gwarden.music.R.style.Theme_Wonder_Sheet);
+        su.gwarden.music.ui.Skin.INSTANCE.prepare(d);
         d.setCanceledOnTouchOutside(true);
         android.view.Window w = d.getWindow();
         if (w != null) {
@@ -9639,6 +9972,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         root.addView(col);
         d.setContentView(root);
         d.show();
+        try { su.gwarden.music.ui.Skin.INSTANCE.applyToDialog(d); } catch (java.lang.Throwable ignored) {}
         if (w != null) {
             int h = (int) (getResources().getDisplayMetrics().heightPixels * 0.72f);
             w.setLayout(-1, h);
@@ -9774,9 +10108,32 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 v -> showSpotifySettingsMenu()));
 
         box.addView(settingsTextRow(
+                "Обновления",
+                "проверить новую версию Wonder",
+                v -> su.gwarden.music.ui.UpdateBanner.INSTANCE.checkNow(MainActivity.this)));
+
+        box.addView(settingsTextRow(
                 "Импорт по ссылке",
                 "Плейлист Deezer / SoundCloud / Spotify",
                 v -> showImportDialog("https://www.deezer.com/playlist/...")));
+
+        box.addView(settingsSection("ЗВУК"));
+        box.addView(settingsRow(
+                su.gwarden.music.R.drawable.ic_eq,
+                "Эквалайзер и звук",
+                "10 полос · басы · реверб · дистошн · темп · тон · кроссфейд",
+                su.gwarden.music.audio.Fx.INSTANCE.getSettings().getEnabled(),
+                v -> su.gwarden.music.ui.FxSheet.INSTANCE.show(MainActivity.this, this.player)));
+
+        box.addView(settingsSection("ВНЕШНИЙ ВИД"));
+        box.addView(settingsRow(
+                su.gwarden.music.R.drawable.ic_palette,
+                "Акцент, фон и шрифт",
+                su.gwarden.music.ui.Skin.INSTANCE.fontTitle()
+                        + " · фон: " + su.gwarden.music.ui.Skin.INSTANCE.bgTitle(),
+                false,
+                v -> startActivity(new android.content.Intent(
+                        MainActivity.this, su.gwarden.music.AppearanceActivity.class))));
 
         box.addView(settingsSection("ПРИЛОЖЕНИЕ"));
         box.addView(settingsSwitchRow(
@@ -9823,6 +10180,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                             .putBoolean("hide_blocked", this.hideBlocked).apply();
                     setTab(this.tab);
                 }));
+        box.addView(settingsTextRow("Адрес сервера", null, v -> showServerDialog()));
         box.addView(settingsTextRow("Скопировать лог", null, v -> {
             copyToClipboard("Wonder log", buildReport("ЛОГ", ""));
             showPill("Лог скопирован в буфер");
@@ -10038,14 +10396,15 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     }
 
     public final void showMoreMenu() {
-        java.lang.String[] items = new java.lang.String[7];
+        java.lang.String[] items = new java.lang.String[8];
         items[0] = "Обновить";
         items[1] = "Аккаунт";
         items[2] = "Импорт";
         items[3] = "Статус VK";
         items[4] = "Заменить заблокированные";
         items[5] = this.hideBlocked ? "Показать недоступные" : "Скрыть недоступные";
-        items[6] = "Скопировать лог";
+        items[6] = "Адрес сервера";
+        items[7] = "Скопировать лог";
         new android.app.AlertDialog.Builder(this).setTitle("Меню · v" + APP_VER).setItems(items, new android.content.DialogInterface.OnClickListener() { // from class: su.gwarden.music.MainActivity$$ExternalSyntheticLambda152
             @Override // android.content.DialogInterface.OnClickListener
             public final void onClick(android.content.DialogInterface dialogInterface, int i) {
@@ -10086,6 +10445,9 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 this$0.setTab(this$0.tab);
                 return;
             case 6:
+                this$0.showServerDialog();
+                return;
+            case 7:
                 this$0.copyToClipboard("Wonder log", this$0.buildReport("ЛОГ", ""));
                 this$0.showPill("Лог скопирован в буфер");
                 return;
@@ -10114,7 +10476,32 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         }
     }
 
+    private final void showServerDialog() {
+        final android.widget.EditText input = new android.widget.EditText(this);
+        input.setText(su.gwarden.music.api.ApiClient.INSTANCE.getBaseUrl());
+        input.setSingleLine();
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        input.setPadding(pad, pad, pad, pad);
+        new android.app.AlertDialog.Builder(this).setTitle("Адрес сервера").setView(input).setPositiveButton("Сохранить", new android.content.DialogInterface.OnClickListener() { // from class: su.gwarden.music.MainActivity$$ExternalSyntheticLambda78
+            @Override // android.content.DialogInterface.OnClickListener
+            public final void onClick(android.content.DialogInterface dialogInterface, int i) {
+                su.gwarden.music.MainActivity.showServerDialog$lambda$341(input, MainActivity.this, dialogInterface, i);
+            }
+        }).setNegativeButton("Отмена", (android.content.DialogInterface.OnClickListener) null).show();
+    }
+
     /* JADX INFO: Access modifiers changed from: private */
+    public static final void showServerDialog$lambda$341(android.widget.EditText $input, su.gwarden.music.MainActivity this$0, android.content.DialogInterface dialogInterface, int i) {
+        su.gwarden.music.api.ApiClient.INSTANCE.setBaseUrl($input.getText().toString());
+        android.widget.TextView textView = this$0.hSub;
+        if (textView == null) {
+            kotlin.jvm.internal.Intrinsics.throwUninitializedPropertyAccessException("hSub");
+            textView = null;
+        }
+        textView.setText("Сервер: " + su.gwarden.music.api.ApiClient.INSTANCE.getBaseUrl());
+        this$0.setTab(this$0.tab);
+    }
+
     private final void showVkStatus() {
         final android.widget.TextView tv = new android.widget.TextView(this);
         tv.setText("Проверяю VK...");
@@ -10459,7 +10846,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         });
     }
 
-    /** Токен ещё живой (живёт ~час, берём с запасом 10 минут). */
+    /** Токен с сервера ещё живой (живёт ~час, берём с запасом 10 минут). */
     private final boolean spotifyTokenFresh(su.gwarden.music.api.ApiClient.SpotifyStatus st) {
         if (st == null || !st.getConnected()) {
             return false;
@@ -10494,8 +10881,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     }
 
     /**
-     * Свежий токен веб-плеера с телефона (живёт ~час). Потом run().
-     * Токен добываем КАЖДЫЙ раз (Spotify
+     * Свежий токен веб-плеера с телефона (живёт ~час) -> серверу. Потом run().
+     * Токен добываем КАЖДЫЙ раз: сервер не может обновить его сам (Spotify
      * блокирует get_access_token с датацентровых IP).
      */
     private final void refreshSpotify(final java.lang.Runnable then) {
@@ -10636,7 +11023,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
 
         android.widget.TextView hint = new android.widget.TextView(this);
         hint.setText("1. developer.spotify.com → Create app\n"
-                + "2. Redirect URI: https://example.com/spotify/callback\n"
+                + "2. Redirect URI: https://example.com/music/spotify/callback\n"
                 + "3. User Management → добавь свой аккаунт Spotify\n"
                 + "4. Вставь Client ID и Client Secret из Settings");
         hint.setTextSize(13.0f);

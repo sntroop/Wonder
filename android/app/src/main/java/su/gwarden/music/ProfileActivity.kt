@@ -58,6 +58,7 @@ class ProfileActivity : AppCompatActivity() {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        su.gwarden.music.ui.Skin.applyTheme(this)
         super.onCreate(savedInstanceState)
         ApiClient.init(this)
         ImageLoader.init(this)
@@ -116,6 +117,7 @@ class ProfileActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        su.gwarden.music.ui.Skin.apply(this)
         load()
     }
 
@@ -578,7 +580,7 @@ class ProfileActivity : AppCompatActivity() {
                 ApiClient.ownDelete(t.id) { ok, err ->
                     if (ok) {
                         // чистим и локальные копии: иначе трек играет из кэша
-                        // телефона, хотя в аккаунте его уже нет
+                        // телефона, хотя на сервере его уже нет
                         runCatching {
                             val tr = Track(
                                 id = t.id, source = t.source.ifEmpty { "own" },

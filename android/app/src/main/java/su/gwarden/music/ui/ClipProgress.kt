@@ -21,6 +21,14 @@ class ClipProgress @JvmOverloads constructor(
             invalidate()
         }
 
+    /** Акцентный цвет из оформления. */
+    var accent: Int = 0xFFFFFFFF.toInt()
+        set(v) {
+            field = v
+            playPaint.color = v
+            invalidate()
+        }
+
     private val d = resources.displayMetrics.density
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x33FFFFFF }
     private val playPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }

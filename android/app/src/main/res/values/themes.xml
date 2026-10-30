@@ -46,4 +46,69 @@
     <style name="Theme.Wonder.Fullscreen" parent="Theme.Wonder.Sheet">
         <item name="android:windowFullscreen">true</item>
     </style>
+
+    <!-- ── Сменные шрифты ────────────────────────────────────────────────
+         Выбор шрифта накладывает один из этих overlay-стилей на тему
+         Activity (Skin.applyTheme) ДО создания вьюх. Отдельные textViewStyle
+         нужны потому, что базовый WonderText жёстко задаёт Unbounded. -->
+
+    <style name="Font.Overlay.Manrope" parent="">
+        <item name="android:fontFamily">@font/manrope</item>
+        <item name="fontFamily">@font/manrope</item>
+        <item name="android:textViewStyle">@style/Text.Manrope</item>
+        <item name="android:editTextStyle">@style/Edit.Manrope</item>
+    </style>
+
+    <style name="Text.Manrope" parent="android:Widget.TextView">
+        <item name="android:fontFamily">@font/manrope</item>
+    </style>
+
+    <style name="Edit.Manrope" parent="android:Widget.EditText">
+        <item name="android:fontFamily">@font/manrope</item>
+    </style>
+
+    <style name="Font.Overlay.Inter" parent="">
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textViewStyle">@style/Text.Inter</item>
+        <item name="android:editTextStyle">@style/Edit.Inter</item>
+    </style>
+
+    <style name="Text.Inter" parent="android:Widget.TextView">
+        <item name="android:fontFamily">@font/inter</item>
+    </style>
+
+    <style name="Edit.Inter" parent="android:Widget.EditText">
+        <item name="android:fontFamily">@font/inter</item>
+    </style>
+
+    <style name="Font.Overlay.Jetbrains" parent="">
+        <item name="android:fontFamily">@font/jetbrains_mono</item>
+        <item name="fontFamily">@font/jetbrains_mono</item>
+        <item name="android:textViewStyle">@style/Text.Jetbrains</item>
+        <item name="android:editTextStyle">@style/Edit.Jetbrains</item>
+    </style>
+
+    <style name="Text.Jetbrains" parent="android:Widget.TextView">
+        <item name="android:fontFamily">@font/jetbrains_mono</item>
+    </style>
+
+    <style name="Edit.Jetbrains" parent="android:Widget.EditText">
+        <item name="android:fontFamily">@font/jetbrains_mono</item>
+    </style>
+
+    <style name="Font.Overlay.PtSerif" parent="">
+        <item name="android:fontFamily">@font/pt_serif</item>
+        <item name="fontFamily">@font/pt_serif</item>
+        <item name="android:textViewStyle">@style/Text.PtSerif</item>
+        <item name="android:editTextStyle">@style/Edit.PtSerif</item>
+    </style>
+
+    <style name="Text.PtSerif" parent="android:Widget.TextView">
+        <item name="android:fontFamily">@font/pt_serif</item>
+    </style>
+
+    <style name="Edit.PtSerif" parent="android:Widget.EditText">
+        <item name="android:fontFamily">@font/pt_serif</item>
+    </style>
 </resources>
