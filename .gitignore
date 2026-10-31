@@ -14,3 +14,13 @@ android/local.properties
 # IDE / OS
 .idea/
 .DS_Store
+
+# Web / desktop
+web/node_modules/
+web/dist/
+web/tsconfig.tsbuildinfo
+desktop/node_modules/
+desktop/release/
+desktop/web/
+desktop/*.exe
+desktop/*.zip

@@ -6,7 +6,7 @@
 
 **Your music should feel like one place, not five apps.**
 
-Source snapshot of the Android client: interface, player, library, offline mode.
+Source snapshot of the Android and Windows clients: interface, player, library, offline mode.
 
 [What is this repository](#what-is-this-repository) · [Build](#build) · [Permissions](#permissions) · [Security](#security-posture) · [Security policy](SECURITY.md)
 
@@ -14,6 +14,7 @@ Source snapshot of the Android client: interface, player, library, offline mode.
 
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?logo=kotlin&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-10%2B-0078D4?logo=windows&logoColor=white)
 ![minSdk](https://img.shields.io/badge/minSdk-24-0A0A0A)
 ![version](https://img.shields.io/badge/version-12.58-0A0A0A)
 ![license](https://img.shields.io/badge/license-source--available-6C4CF1)
@@ -25,39 +26,42 @@ Source snapshot of the Android client: interface, player, library, offline mode.
 ## What is this repository
 
 This is the **client side of Wonder**, published so the code can be inspected:
-what the app does, what it stores, and what it sends over the network.
+what the apps do, what they store, and what they send over the network. It contains
+the Android client and the Windows desktop client (Electron + the React web UI).
 
 The production build of Wonder connects to a private service. That service — its
 addresses, keys, recommendation engine, account system and the VK/SoundCloud/
 Spotify/Yandex integrations — is **intentionally not part of this repository**.
 
-In this snapshot the network layer is replaced with stubs. The app **builds,
-installs and launches**, demonstrates the UI and the local player, and sends
-nothing. Server-backed screens (Home, Search, Shorts, My Wave) show an empty
-state.
+In the Android snapshot the network layer is replaced with stubs: the app
+**builds, installs and launches**, demonstrates the UI and the local player, and
+sends nothing. The desktop client ships the real web UI but expects a backend at
+`WONDER_BACKEND` (default `http://127.0.0.1:8400`); without one, server-backed
+screens show empty states. The backend itself is not part of this repository.
 
 > This is a source snapshot for review, not the full production codebase.
-> The production APK is built from a private branch that includes the service
-> integration.
+> Production APK and Windows installer are built from a private branch that
+> includes the service integration.
 
 ## What is inside
 
 | Area | What you get | Status |
 |---|---|---|
 | Playback | ExoPlayer/Media3, background service, media session, queue, next-track prefetch | Included |
-| Sound | 10-band equalizer, bass, reverb, distortion, tempo/pitch, crossfade | Included |
 | Audio FX | 10-band EQ, presets, bass shelf, reverb, distortion, tempo/pitch, crossfade | Included |
+| Web UI | React/Vite client shared by the web app and the Windows build | Included |
+| Windows shell | Electron wrapper, tray, media keys, autostart, NSIS installer | Included (source) |
 | Appearance | Accent color, wallpaper/GIF/video background, blur/dim, custom fonts | Included |
 | Library | Tracks, artists, playlists, local collections, likes | Included |
 | Offline | Download cache, eviction policy, local HTTP stream server | Included |
 | Interface | Custom views, liquid navigation, player sheet, shorts feed, typography | Included |
-| Design system | Dark monochrome palette, Unbounded typeface, 93 drawables, 9 layouts | Included |
+| Design system | Dark monochrome palette, Unbounded typeface, 96 drawables, 9 layouts | Included |
 | Service API | `ApiClient` contract with all public methods | Stubbed |
 | Accounts | VK / SoundCloud / Spotify / Yandex / Google login and token exchange | Not included |
 | Recommendations | Home feed, wave, similar tracks, remixes | Not included |
 | Updates | In-app update banner UI | Stubbed |
 
-**59 Kotlin/Java files · ~24k lines · 121 resource files.**
+**Android: 60 Kotlin/Java files · ~24k lines · 120 resource files. Web: 52 TS/TSX files.**
 
 ## Architecture
 
@@ -95,8 +99,10 @@ is offline.
 | `.../vk/`, `.../spotify/` | Integration boundaries; disabled in this snapshot |
 | `.../update/` | In-app update UI; network stubbed in this snapshot |
 | `app/src/main/res/` | Themes, drawables, layouts, Unbounded font, icons |
+| `web/` | React/Vite client: pages, player store, API contract, audio FX |
+| `desktop/` | Electron main/preload, local proxy, tray, NSIS installer |
 
-## Build
+## Build Android
 
 Requirements: **JDK 17** and **Android SDK platform 35**.
 
@@ -108,7 +114,7 @@ echo "sdk.dir=$ANDROID_HOME" > local.properties
 # -> app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Release build:
+Android release build:
 
 ```bash
 ./gradlew assembleRelease
@@ -126,6 +132,30 @@ The release APK is unsigned by design: sign it with your own key
 | compileSdk / targetSdk | 35 |
 | minSdk | 24 (Android 7.0) |
 | Java | 17 |
+
+## Build Windows
+
+Requirements: **Node.js 20+** and npm.
+
+```bash
+# 1) build the web UI
+cd web
+npm ci
+npm run build
+rm -rf ../desktop/web
+cp -r dist ../desktop/web
+
+# 2) run or package the Electron shell
+cd ../desktop
+npm ci
+npm start          # dev run
+npm run dist:win   # NSIS + portable in release/ (run on Windows)
+```
+
+The desktop app proxies `/wonder/api`, `/wonder/own` and `/wonder/apk` to
+`WONDER_BACKEND` (default `http://127.0.0.1:8400`). See
+[`desktop/README.md`](desktop/README.md) for details.
+
 
 ## Permissions
 

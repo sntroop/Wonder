@@ -1,0 +1,656 @@
+/* Страницы настроек и профиля. Все новые классы с префиксом st-. */
+
+/* ── каркас ───────────────────────────────────────────────────────────── */
+
+/* поднимает контент над неподвижным фоном (.bg идёт с z-index: 0,
+   но лежит внутри .app выше статичных страниц) */
+.st-page {
+  position: relative;
+  z-index: 2;
+}
+
+.st-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 0 6px;
+}
+
+.st-title {
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.st-eyebrow {
+  margin: 26px 0 10px;
+}
+
+.st-section {
+  margin-top: 34px;
+}
+
+.st-section .st-eyebrow {
+  margin-top: 0;
+}
+
+.st-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.st-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.st-note {
+  color: var(--text-3);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.st-row-btn {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.st-row-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.st-danger {
+  color: #ff9db4;
+}
+
+.st-danger:hover {
+  background: rgba(255, 90, 130, 0.07);
+}
+
+.st-logout {
+  margin-top: 26px;
+}
+
+.st-btn-sm {
+  height: 38px;
+  padding: 0 18px;
+  font-size: 13px;
+}
+
+.st-btn-sm svg {
+  width: 16px;
+  height: 16px;
+}
+
+.st-btn-sm:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+/* ── диалоги ──────────────────────────────────────────────────────────── */
+
+.st-dialog {
+  width: min(560px, 100%);
+}
+
+.st-dialog-wide {
+  width: min(660px, 100%);
+}
+
+.st-dialog .icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.st-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* переключатель способов импорта: ссылка / скриншот / список / TikTok */
+.st-modes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.st-mode {
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.st-mode:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.st-mode.on {
+  color: #0a0a0a;
+  background: #fff;
+}
+
+.st-mode:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (max-width: 520px) {
+  .st-modes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.st-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.st-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  font-weight: 600;
+}
+
+textarea.st-textarea {
+  display: block;
+  width: 100%;
+  min-height: 104px;
+  padding: 13px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  font-size: 14.5px;
+  font-family: inherit;
+  line-height: 1.5;
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.16s ease;
+}
+
+textarea.st-textarea:focus {
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.st-alert {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 90, 130, 0.09);
+  border: 1px solid rgba(255, 90, 130, 0.22);
+  color: #ff9db4;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+/* превью плейлиста / трека */
+
+.st-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.st-preview-cover {
+  width: 62px;
+  height: 62px;
+  border-radius: 14px;
+  overflow: hidden;
+  flex: none;
+  background: #17171a;
+}
+
+.st-preview-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.st-preview-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.st-preview-title {
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.st-preview-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--text-3);
+  font-size: 12.5px;
+}
+
+/* прогресс */
+
+.st-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.st-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #fff;
+  transition: width 0.3s ease;
+}
+
+.st-progress.st-indeterminate i {
+  width: 38%;
+  animation: st-slide 1.1s ease-in-out infinite;
+}
+
+@keyframes st-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.st-progress-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+/* найденные треки */
+
+.st-imp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.st-imp-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 6px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.st-imp-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.st-imp-cover {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex: none;
+  background: #17171a;
+}
+
+.st-imp-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.st-imp-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.st-imp-title {
+  display: block;
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.st-imp-artist {
+  display: block;
+  color: var(--text-3);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.st-imp-dur {
+  flex: none;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+/* выбор файлов */
+
+.st-drop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.st-drop:hover {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.st-drop input {
+  display: none;
+}
+
+.st-drop-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #fff;
+  color: #0a0a0c;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.st-drop-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.st-drop-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #17171a;
+  color: var(--text-3);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.st-drop-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.st-drop-thumb svg {
+  width: 20px;
+  height: 20px;
+}
+
+.st-drop-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.st-drop-info b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.st-drop-info span {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+/* VK QR */
+
+.st-vk {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 0 4px;
+  text-align: center;
+}
+
+.st-qr-img {
+  display: block;
+  width: 220px;
+  max-width: 100%;
+  padding: 10px;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.st-qr-text {
+  max-width: 360px;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.st-qr-link {
+  color: var(--text);
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  word-break: break-all;
+}
+
+.st-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.st-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  flex: none;
+}
+
+.st-status.st-wait::before {
+  background: #fff;
+  animation: st-pulse 1.4s ease-in-out infinite;
+}
+
+.st-status.st-err {
+  color: #ff9db4;
+}
+
+.st-status.st-err::before {
+  background: #ff9db4;
+}
+
+@keyframes st-pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* ── профиль ──────────────────────────────────────────────────────────── */
+
+.st-profile-head {
+  flex-wrap: wrap;
+}
+
+.st-profile-id {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.st-profile-id .hint {
+  margin-top: 4px;
+}
+
+.st-head-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.st-avatar-wrap {
+  position: relative;
+  flex: none;
+}
+
+.st-avatar-edit {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #0a0a0c;
+  background: #fff;
+  color: #0a0a0c;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.15s ease;
+}
+
+.st-avatar-edit:hover {
+  transform: scale(1.06);
+}
+
+.st-avatar-edit:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.st-avatar-edit svg {
+  width: 16px;
+  height: 16px;
+}
+
+.st-hidden {
+  display: none;
+}
+
+.st-stats {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.st-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  margin: 0 0 22px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.st-edit-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.st-empty {
+  padding: 30px 16px;
+}
+
+/* ── адаптив ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  .st-profile-head .st-head-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .st-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px 12px;
+  }
+
+  .st-preview-cover {
+    width: 52px;
+    height: 52px;
+  }
+
+  .st-qr-img {
+    width: 180px;
+  }
+}
+
+@media (max-width: 380px) {
+  .st-head {
+    gap: 10px;
+  }
+
+  .st-title {
+    font-size: 20px;
+  }
+
+  .st-btn-sm {
+    height: 34px;
+    padding: 0 14px;
+    font-size: 12.5px;
+  }
+
+  .st-imp-dur {
+    display: none;
+  }
+
+  .st-edit {
+    padding: 12px;
+  }
+}
