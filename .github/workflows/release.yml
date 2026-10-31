@@ -18,9 +18,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: android-actions/setup-android@v3
       - name: Build public Android APK
         run: |
+          echo "sdk.dir=${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}" > android/local.properties
           chmod +x android/gradlew
           cd android
           ./gradlew assembleDebug --no-daemon
