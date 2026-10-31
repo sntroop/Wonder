@@ -1,0 +1,101 @@
+name: Public release
+
+on:
+  push:
+    tags:
+      - "v*-public*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Build public Android APK
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleDebug --no-daemon
+      - name: Rename APK
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+             "Wonder-Android-${GITHUB_REF_NAME}.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: Wonder-Android-*.apk
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build web UI
+        run: |
+          cd web
+          npm ci
+          npm run build
+      - name: Copy web build into desktop
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force desktop/web -ErrorAction SilentlyContinue
+          Copy-Item -Recurse web/dist desktop/web
+      - name: Build Windows app
+        run: |
+          cd desktop
+          npm ci
+          npm run dist:win
+      - name: Collect Windows assets
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          Copy-Item desktop/release/Wonder-Setup-*.exe "Wonder-Setup-${tag}.exe"
+          Copy-Item desktop/release/Wonder-Portable-*.exe "Wonder-Portable-${tag}.exe"
+          Compress-Archive -Path desktop/release/win-unpacked `
+            -DestinationPath "Wonder-Windows-${tag}.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-assets
+          path: |
+            Wonder-Setup-*.exe
+            Wonder-Portable-*.exe
+            Wonder-Windows-*.zip
+          if-no-files-found: error
+
+  release:
+    needs: [android, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Checksums
+        working-directory: assets
+        run: sha256sum * > SHA256SUMS.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Wonder ${{ github.ref_name }} — public client
+          body: |
+            Public client snapshot: Android APK, Windows portable ZIP and NSIS installer.
+
+            - Android: network layer is stubbed; installs and runs, server screens show empty states.
+            - Windows: run `Wonder.exe`; set `WONDER_BACKEND` (default `http://127.0.0.1:8400`) to point it at a compatible backend.
+            - Backend, accounts, recommendation engine and service integrations are not included.
+          files: |
+            assets/*.apk
+            assets/*.zip
+            assets/*.exe
+            assets/SHA256SUMS.txt
+          fail_on_unmatched_files: true
