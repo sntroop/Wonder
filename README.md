@@ -43,6 +43,18 @@ screens show empty states. The backend itself is not part of this repository.
 > Production APK and Windows installer are built from a private branch that
 > includes the service integration.
 
+## Download
+
+Prebuilt public snapshots are attached to
+[Releases](https://github.com/sntroop/Wonder/releases/latest):
+
+- **Android APK** — `Wonder-Android-*.apk` (network stubbed, empty server screens).
+- **Windows installer** — `Wonder-Setup-*.exe` (per-user, no UAC).
+- **Windows portable** — `Wonder-Windows-*.zip` or `Wonder-Portable-*.exe`.
+
+The Windows build expects a compatible backend at `WONDER_BACKEND`
+(default `http://127.0.0.1:8400`). The backend is not included.
+
 ## What is inside
 
 | Area | What you get | Status |
