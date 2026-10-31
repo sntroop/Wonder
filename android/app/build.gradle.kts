@@ -11,8 +11,8 @@ android {
         applicationId = "su.gwarden.music"
         minSdk = 24
         targetSdk = 35
-        versionCode = 243
-        versionName = "12.50"
+        versionCode = 251
+        versionName = "12.58"
     }
 
     buildTypes {

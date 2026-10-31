@@ -145,6 +145,7 @@ object FxSheet {
         val eq = EqView(activity)
         eq.accent = Skin.accent
         eq.bands = Fx.settings.bands.copyOf()
+        eq.bass = Fx.settings.bass
         val eqLp = LinearLayout.LayoutParams(-1, -2)
         eqLp.topMargin = dp(activity, 4)
         box.addView(eq, eqLp)
@@ -169,6 +170,7 @@ object FxSheet {
                 chips.addView(presetChip(activity, p.name) {
                     Fx.applyPreset(activity, p)
                     eq.bands = Fx.settings.bands.copyOf()
+                    eq.bass = Fx.settings.bass
                     pl?.refreshFx()
                     rebuildSliders()
                 })
@@ -233,6 +235,7 @@ object FxSheet {
             slider("Басы", { Fx.settings.bass }, 0f, 15f, 0.5f,
                 { "+" + String.format(Locale.US, "%.1f", it) + " dB" }) {
                 Fx.update(activity) { st -> st.bass = it }
+                eq.bass = it
                 pl?.refreshFx()
             }
             slider("Реверб", { Fx.settings.reverbMix }, 0f, 1f, 0.02f,
@@ -301,6 +304,7 @@ object FxSheet {
         reset.setOnClickListener {
             Fx.resetAll(activity)
             eq.bands = FloatArray(Fx.BANDS.size)
+            eq.bass = 0f
             pl?.refreshFx()
             rebuildSliders()
             refreshChips()

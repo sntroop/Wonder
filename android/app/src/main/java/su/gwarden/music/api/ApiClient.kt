@@ -479,4 +479,21 @@ object ApiClient {
 
     fun ownDelete(id: String, onResult: (Boolean, String?) -> Unit) { }
 
+    // --- импорт: в публичной сборке сети нет ---
+    fun importTikTok(url: String, onDone: (ImportStart?, String?) -> Unit) {
+        onDone(null, "Сетевой слой отключён в публичной сборке")
+    }
+
+    fun ocrScreenshot(uri: android.net.Uri, onDone: (String?, String?) -> Unit) {
+        onDone(null, "Сетевой слой отключён в публичной сборке")
+    }
+
+    fun importText(
+        text: String,
+        title: String = "Импорт по тексту",
+        onDone: (ImportStart?, String?) -> Unit,
+    ) {
+        onDone(null, "Сетевой слой отключён в публичной сборке")
+    }
+
 }

@@ -182,6 +182,25 @@
             android:textSize="10.5sp" />
 
         <FrameLayout
+            android:id="@+id/short_dislike"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_glass_circle"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:id="@+id/short_dislike_ic"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_dislike"
+                android:tint="#F2F2F2"
+                android:contentDescription="Не нравится" />
+        </FrameLayout>
+
+        <FrameLayout
             android:id="@+id/short_cmt"
             android:layout_width="46dp"
             android:layout_height="46dp"

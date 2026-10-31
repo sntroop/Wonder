@@ -36,6 +36,13 @@ class EqView @JvmOverloads constructor(
             invalidate()
         }
 
+    /** Усиление низкой полки (ползунок «Басы»), дБ 0..15. */
+    var bass: Float = 0f
+        set(v) {
+            field = v.coerceIn(0f, 15f)
+            invalidate()
+        }
+
     /** Колбэк: полоса изменилась (индекс, дБ). */
     var onBandChanged: ((Int, Float) -> Unit)? = null
 
@@ -143,7 +150,8 @@ class EqView @JvmOverloads constructor(
         for (i in Fx.BANDS.indices) {
             filters[i].peaking(fs, Fx.BANDS[i], 1.4f, bands.getOrElse(i) { 0f })
         }
-        val steps = 72
+        val bassFilter = Biquad().apply { lowShelf(fs, 90f, bass) }
+        val steps = 120
         curve.reset()
         for (s in 0..steps) {
             val t = s / steps.toFloat()
@@ -151,12 +159,42 @@ class EqView @JvmOverloads constructor(
             val f = 20f * 1000f.pow(t)
             var sum = 0f
             for (filt in filters) sum += filt.magnitudeDb(f, fs)
-            val db = sum.coerceIn(-15f, 15f)
-            val x = padSide + (width - padSide * 2) * t
+            sum += bassFilter.magnitudeDb(f, fs)
+            val db = sum.coerceIn(-12f, 12f)
+            val x = freqToX(f, cw)
             val y = cy - hh * (db / 12f)
             if (s == 0) curve.moveTo(x, y) else curve.lineTo(x, y)
         }
         canvas.drawPath(curve, curvePaint)
+    }
+
+    /**
+     * Частота -> X. Полосы на экране стоят равномерно, а частоты октавные,
+     * поэтому обычная логарифмическая шкала даёт пик правее ручки. Здесь
+     * каждая полоса попадает ровно в свой центр, а края 20 Гц/20 кГц
+     * продолжают шкалу до краёв графика.
+     */
+    private fun freqToX(f: Float, cw: Float): Float {
+        val first = Fx.BANDS.first()
+        val last = Fx.BANDS.last()
+        if (f <= first) {
+            val t = (log10((f / 20f).toDouble()) /
+                    log10((first / 20f).toDouble())).toFloat().coerceIn(0f, 1f)
+            return padSide + cw * 0.5f * t
+        }
+        if (f >= last) {
+            val t = (log10((f / last).toDouble()) /
+                    log10((20000f / last).toDouble())).toFloat().coerceIn(0f, 1f)
+            return padSide + cw * 9.5f + cw * 0.5f * t
+        }
+        for (i in 0 until Fx.BANDS.size - 1) {
+            if (f <= Fx.BANDS[i + 1]) {
+                val t = (log10((f / Fx.BANDS[i]).toDouble()) /
+                        log10((Fx.BANDS[i + 1] / Fx.BANDS[i]).toDouble())).toFloat()
+                return padSide + cw * (i + 0.5f + t)
+            }
+        }
+        return width - padSide
     }
 
     override fun performClick(): Boolean {

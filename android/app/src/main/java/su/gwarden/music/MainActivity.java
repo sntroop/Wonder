@@ -76,7 +76,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     private su.gwarden.music.ui.PlayingHighlight playingHighlight;
     private int playlistReq;
     private su.gwarden.music.ui.IosSpinner progress;
-    private android.app.AlertDialog qrDialog;
+    private android.app.Dialog qrDialog;
     private androidx.recyclerview.widget.RecyclerView recycler;
     private java.lang.Runnable searchJob;
     private android.widget.LinearLayout searchRow;
@@ -438,6 +438,15 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 @Override
                 public void onClick(android.view.View v) {
                     su.gwarden.music.MainActivity.this.onWaveAdd();
+                }
+            });
+        }
+        android.view.View waveDislikeBtn = findViewById(su.gwarden.music.R.id.wave_dislike);
+        if (waveDislikeBtn != null) {
+            waveDislikeBtn.setOnClickListener(new android.view.View.OnClickListener() {
+                @Override
+                public void onClick(android.view.View v) {
+                    su.gwarden.music.MainActivity.this.onWaveDislike();
                 }
             });
         }
@@ -1396,7 +1405,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     }
 
     private final void showQrDialog(java.lang.String id, final java.lang.String url) {
-        android.app.AlertDialog alertDialog = this.qrDialog;
+        android.app.Dialog alertDialog = this.qrDialog;
         if (alertDialog != null) {
             alertDialog.dismiss();
         }
@@ -1409,26 +1418,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         hint.setTextSize(13.0f);
         hint.setLineSpacing(dp(3), 1.0f);
         box.addView(hint);
-        this.qrDialog = new android.app.AlertDialog.Builder(this).setTitle("Вход по QR-коду").setView(box).setPositiveButton("Открыть VK", new android.content.DialogInterface.OnClickListener() { // from class: su.gwarden.music.MainActivity$$ExternalSyntheticLambda44
-            @Override // android.content.DialogInterface.OnClickListener
-            public final void onClick(android.content.DialogInterface dialogInterface, int i) {
-                su.gwarden.music.MainActivity.this.openUrl(url);
-            }
-        }).setNegativeButton("Отмена", new android.content.DialogInterface.OnClickListener() { // from class: su.gwarden.music.MainActivity$$ExternalSyntheticLambda55
-            @Override // android.content.DialogInterface.OnClickListener
-            public final void onClick(android.content.DialogInterface dialogInterface, int i) {
-                su.gwarden.music.MainActivity.this.stopQr();
-            }
-        }).setOnDismissListener(new android.content.DialogInterface.OnDismissListener() { // from class: su.gwarden.music.MainActivity$$ExternalSyntheticLambda66
-            @Override // android.content.DialogInterface.OnDismissListener
-            public final void onDismiss(android.content.DialogInterface dialogInterface) {
-                su.gwarden.music.MainActivity.showQrDialog$lambda$67(dialogInterface);
-            }
-        }).create();
-        android.app.AlertDialog alertDialog2 = this.qrDialog;
-        if (alertDialog2 != null) {
-            alertDialog2.show();
-        }
+        this.qrDialog = su.gwarden.music.ui.WonderDialog.custom(this, "Вход по QR-коду",
+                box, "Открыть VK", () -> openUrl(url), "Отмена", () -> stopQr(), null);
         openUrl(url);
         pollQr(id, 90, hint);
     }
@@ -1461,7 +1452,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             new android.os.Handler(android.os.Looper.getMainLooper()).removeCallbacks(it);
         }
         this.loginPoll = null;
-        android.app.AlertDialog alertDialog = this.qrDialog;
+        android.app.Dialog alertDialog = this.qrDialog;
         if (alertDialog != null) {
             alertDialog.dismiss();
         }
@@ -1610,30 +1601,27 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         });
         col.addView(scBtn, lp);
 
-        final android.app.AlertDialog dlg = new android.app.AlertDialog.Builder(this)
-            .setTitle("Аккаунт")
-            .setView(col)
-            .setPositiveButton("Закрыть", (android.content.DialogInterface.OnClickListener) null)
-            .setNegativeButton("Выйти", (android.content.DialogInterface.OnClickListener) null)
-            .create();
-        dlg.show();
+        final android.app.Dialog[] dlgRef = new android.app.Dialog[1];
+        dlgRef[0] = su.gwarden.music.ui.WonderDialog.custom(this, "Аккаунт", col,
+                "Закрыть", null, "Выйти", () -> {
+                    su.gwarden.music.api.ApiClient.INSTANCE.logout();
+                    if (player != null) player.pause();
+                    su.gwarden.music.vk.VkRelay.INSTANCE.stop();
+                    su.gwarden.music.WonderAuth.INSTANCE.resetOnboarding(MainActivity.this);
+                    showLoginScreen();
+                }, null);
         vkBtn.setOnClickListener(new android.view.View.OnClickListener() {
             @Override public void onClick(android.view.View v) {
-                dlg.dismiss();
+                if (dlgRef[0] != null) dlgRef[0].dismiss();
                 startActivityForResult(new android.content.Intent(
                     MainActivity.this, su.gwarden.music.vk.VkLoginActivity.class), 77);
             }
         });
         scBtn.setOnClickListener(new android.view.View.OnClickListener() {
             @Override public void onClick(android.view.View v) {
-                dlg.dismiss();
+                if (dlgRef[0] != null) dlgRef[0].dismiss();
                 startActivityForResult(new android.content.Intent(
                     MainActivity.this, su.gwarden.music.vk.ScLoginActivity.class), 78);
-            }
-        });
-        dlg.getButton(-2).setOnClickListener(new android.view.View.OnClickListener() {
-            @Override public void onClick(android.view.View view) {
-                su.gwarden.music.MainActivity.showAccount$lambda$75(dlg, MainActivity.this, view);
             }
         });
         su.gwarden.music.api.ApiClient.INSTANCE.authMeText(new kotlin.jvm.functions.Function1<java.lang.String, kotlin.Unit>() {
@@ -1685,7 +1673,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         return kotlin.Unit.INSTANCE;
     }
 
-    /** Есть ли VK-токен у аккаунта (по телу /api/auth/me). */
+    /** Есть ли VK-токен у аккаунта (по ответу сервера). */
     static boolean vkHasToken(java.lang.String body) {
         try {
             com.google.gson.JsonObject o = com.google.gson.JsonParser.parseString(body).getAsJsonObject();
@@ -1696,7 +1684,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         }
     }
 
-    /** Отвечает ли VK прямо сейчас (по телу /api/auth/me). */
+    /** Отвечает ли VK прямо сейчас (по ответу сервера). */
     static boolean vkReady(java.lang.String body) {
         try {
             com.google.gson.JsonObject o = com.google.gson.JsonParser.parseString(body).getAsJsonObject();
@@ -1707,7 +1695,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         }
     }
 
-    /** Подключён ли SoundCloud (по телу /api/auth/me). */
+    /** Подключён ли SoundCloud (по ответу сервера). */
     static boolean scConnected(java.lang.String body) {
         try {
             com.google.gson.JsonObject o = com.google.gson.JsonParser.parseString(body).getAsJsonObject();
@@ -1718,7 +1706,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         }
     }
 
-    /** Текст карточки аккаунта из JSON /api/auth/me. */
+    /** Текст карточки аккаунта из ответа сервера. */
     static java.lang.String accountCardText(java.lang.String body) {
         try {
             com.google.gson.JsonObject o = com.google.gson.JsonParser.parseString(body).getAsJsonObject();
@@ -3812,6 +3800,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 "tracks", v -> showMyTracks()));
         tiles.addView(libTile("Лайки", "Сердечки из волны и шортсов", su.gwarden.music.R.drawable.ic_heart_fill,
                 "likes", v -> showLikes()));
+        tiles.addView(libTile("Импорт", "Из другого плеера", su.gwarden.music.R.drawable.ic_download,
+                "import", v -> showImportMenu()));
         tiles.addView(libTile("Артисты", "Кого ты слушаешь", su.gwarden.music.R.drawable.ic_artist,
                 "artists", v -> showArtistsScreen()));
         tiles.addView(libTile("Плейлисты", "Свои и из сервисов", su.gwarden.music.R.drawable.ic_playlist,
@@ -4518,6 +4508,31 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         markWaveAdd(t);
     }
 
+    /** «Не нравится» в волне: сильный сигнал вкуса + сразу следующий трек. */
+    private final void onWaveDislike() {
+        su.gwarden.music.player.PlayerController p = this.player;
+        if (p == null) {
+            return;
+        }
+        su.gwarden.music.model.Track t = p.current();
+        if (t == null) {
+            return;
+        }
+        p.feedbackDislike(t);
+        // выкидываем из очереди волны, чтобы трек не всплыл в этом сеансе
+        java.util.List<su.gwarden.music.model.Track> rest = new java.util.ArrayList<>();
+        for (su.gwarden.music.model.Track x : this.waveQueue) {
+            if (x == null || !(x.getSource().equals(t.getSource())
+                    && x.getId().equals(t.getId()))) {
+                rest.add(x);
+            }
+        }
+        this.waveQueue = rest;
+        p.next(false);
+        android.widget.Toast.makeText(this, "Понял, дальше",
+                android.widget.Toast.LENGTH_SHORT).show();
+    }
+
     /** Плюсик превращается в галочку, если трек уже в «Моей музыке». */
     private final void markWaveAdd(su.gwarden.music.model.Track t) {
         android.widget.ImageView ic =
@@ -4551,6 +4566,9 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             return;
         }
         setLikeIcon(btn, false);
+        // состояние лайка приходит асинхронно: пока не знаем - не даём
+        // нажать, иначе первый тап по уже лайкнутому треку его снимает
+        btn.setEnabled(false);
         su.gwarden.music.api.ApiClient.INSTANCE.likeState(t,
                 new kotlin.jvm.functions.Function1<java.lang.Boolean, kotlin.Unit>() {
                     @Override
@@ -4566,6 +4584,9 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                                 }
                                 if (cur != null && cur.getId().equals(t.getId())) {
                                     setLikeIcon(btn, liked);
+                                    btn.setEnabled(true);
+                                } else {
+                                    btn.setEnabled(true);
                                 }
                             }
                         });
@@ -4587,7 +4608,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                                 if (items == null || items.isEmpty()) {
                                     showPill("Лайков пока нет");
                                 } else {
-                                    showTracksList("Лайки", items);
+                                    showTracksList("Лайки", items, true);
                                 }
                             }
                         });
@@ -6491,6 +6512,12 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     /** Показать произвольный список треков (альбом, волна артиста и т.п.). */
     private final void showTracksList(java.lang.String title,
                                       java.util.List<su.gwarden.music.model.Track> items) {
+        showTracksList(title, items, false);
+    }
+
+    private final void showTracksList(java.lang.String title,
+                                      java.util.List<su.gwarden.music.model.Track> items,
+                                      boolean likedMode) {
         if (items == null || items.isEmpty()) {
             showPill("Треков нет");
             return;
@@ -6516,6 +6543,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             this.recycler.setVisibility(0);
             this.recycler.setAdapter(this.adapter);
         }
+        this.adapter.setLikedMode(likedMode);
         this.adapter.submit(items, false);
         // Возврат туда, откуда пришли: из библиотеки — в библиотеку, с главной —
         // на главную, из поиска — в поиск. Раньше здесь жёстко стоял "search",
@@ -8739,6 +8767,12 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             }
             return;
         }
+        if (requestCode == 82) {
+            if (resultCode == -1 && data != null && data.getData() != null) {
+                ocrScreenshot(data.getData());
+            }
+            return;
+        }
         if (requestCode == 77) {
             this.vkFixing = false;
             if (resultCode == -1) {
@@ -9309,6 +9343,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 likeBtn.setOnClickListener(new android.view.View.OnClickListener() {
                     @Override
                     public final void onClick(android.view.View view) {
+                        likeBtn.setEnabled(false);
                         su.gwarden.music.api.ApiClient.INSTANCE.toggleLikeSimple(
                                 liked, new kotlin.jvm.functions.Function1<java.lang.Boolean, kotlin.Unit>() {
                                     @Override
@@ -9318,6 +9353,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                                             @Override
                                             public void run() {
                                                 setLikeIcon(likeBtn, likedNow);
+                                                likeBtn.setEnabled(true);
                                                 showPill(likedNow
                                                         ? "В лайках — рекомендации обновятся"
                                                         : "Убрано из лайков");
@@ -10113,9 +10149,9 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 v -> su.gwarden.music.ui.UpdateBanner.INSTANCE.checkNow(MainActivity.this)));
 
         box.addView(settingsTextRow(
-                "Импорт по ссылке",
-                "Плейлист Deezer / SoundCloud / Spotify",
-                v -> showImportDialog("https://www.deezer.com/playlist/...")));
+                "Перенос музыки",
+                "Ссылка, скриншот или список треков",
+                v -> showImportMenu()));
 
         box.addView(settingsSection("ЗВУК"));
         box.addView(settingsRow(
@@ -10356,23 +10392,20 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
 
     private final void showYandexSettingsMenu() {
         final java.lang.String[] items = {"Моя музыка (лайки)", "Мои плейлисты"};
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("Яндекс Музыка")
-                .setItems(items, (dlg, which) -> {
+        su.gwarden.music.ui.WonderDialog.list(this, "Яндекс Музыка",
+                "Что перенести в Wonder?", items, which -> {
                     if (which == 0) {
                         yandexImportLiked();
                     } else {
                         yandexPickPlaylist();
                     }
-                })
-                .show();
+                });
     }
 
     private final void showSpotifySettingsMenu() {
         final java.lang.String[] items = {"Моя музыка (лайки)", "Мои плейлисты", "Плейлист по ссылке"};
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("Spotify")
-                .setItems(items, (dlg, which) -> {
+        su.gwarden.music.ui.WonderDialog.list(this, "Spotify",
+                "Что перенести в Wonder?", items, which -> {
                     if (which == 0) {
                         spotifyImportLiked();
                     } else if (which == 1) {
@@ -10380,8 +10413,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                     } else {
                         showImportDialog("https://open.spotify.com/playlist/...");
                     }
-                })
-                .show();
+                });
     }
 
     private final void fixBlockedNow() {
@@ -10405,12 +10437,10 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         items[5] = this.hideBlocked ? "Показать недоступные" : "Скрыть недоступные";
         items[6] = "Адрес сервера";
         items[7] = "Скопировать лог";
-        new android.app.AlertDialog.Builder(this).setTitle("Меню · v" + APP_VER).setItems(items, new android.content.DialogInterface.OnClickListener() { // from class: su.gwarden.music.MainActivity$$ExternalSyntheticLambda152
-            @Override // android.content.DialogInterface.OnClickListener
-            public final void onClick(android.content.DialogInterface dialogInterface, int i) {
-                su.gwarden.music.MainActivity.showMoreMenu$lambda$340(su.gwarden.music.MainActivity.this, dialogInterface, i);
-            }
-        }).show();
+        su.gwarden.music.ui.WonderDialog.list(this, "Меню · v" + APP_VER,
+                "Настройки и сервисы", items,
+                which -> su.gwarden.music.MainActivity.showMoreMenu$lambda$340(
+                        MainActivity.this, null, which));
     }
 
     /* JADX INFO: Access modifiers changed from: private */
@@ -10477,17 +10507,16 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     }
 
     private final void showServerDialog() {
-        final android.widget.EditText input = new android.widget.EditText(this);
-        input.setText(su.gwarden.music.api.ApiClient.INSTANCE.getBaseUrl());
-        input.setSingleLine();
-        int pad = (int) (16 * getResources().getDisplayMetrics().density);
-        input.setPadding(pad, pad, pad, pad);
-        new android.app.AlertDialog.Builder(this).setTitle("Адрес сервера").setView(input).setPositiveButton("Сохранить", new android.content.DialogInterface.OnClickListener() { // from class: su.gwarden.music.MainActivity$$ExternalSyntheticLambda78
-            @Override // android.content.DialogInterface.OnClickListener
-            public final void onClick(android.content.DialogInterface dialogInterface, int i) {
-                su.gwarden.music.MainActivity.showServerDialog$lambda$341(input, MainActivity.this, dialogInterface, i);
-            }
-        }).setNegativeButton("Отмена", (android.content.DialogInterface.OnClickListener) null).show();
+        su.gwarden.music.ui.WonderDialog.input(this, "Адрес сервера",
+                "Куда приложение ходит за музыкой", "http://127.0.0.1:8400",
+                su.gwarden.music.api.ApiClient.INSTANCE.getBaseUrl(), "Сохранить",
+                text -> {
+                    su.gwarden.music.api.ApiClient.INSTANCE.setBaseUrl(text);
+                    if (this.hSub != null) {
+                        this.hSub.setText("Сервер: " + su.gwarden.music.api.ApiClient.INSTANCE.getBaseUrl());
+                    }
+                    setTab(this.tab);
+                });
     }
 
     /* JADX INFO: Access modifiers changed from: private */
@@ -10509,7 +10538,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         tv.setTextColor(-5197648);
         int pad = (int) (16 * getResources().getDisplayMetrics().density);
         tv.setPadding(pad, pad, pad, pad);
-        new android.app.AlertDialog.Builder(this).setTitle("VK Музыка").setView(tv).setPositiveButton("Закрыть", (android.content.DialogInterface.OnClickListener) null).show();
+        su.gwarden.music.ui.WonderDialog.custom(this, "VK Музыка", tv,
+                "Закрыть", null, null, null, null);
         final kotlin.jvm.internal.Ref.ObjectRef base = new kotlin.jvm.internal.Ref.ObjectRef();
         base.element = "";
         final kotlin.jvm.internal.Ref.ObjectRef fixes = new kotlin.jvm.internal.Ref.ObjectRef();
@@ -10612,14 +10642,16 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 "Spotify — моя музыка",
                 "Spotify — мои плейлисты",
                 "Spotify — по ссылке",
+                "TikTok — по ссылке",
                 "Яндекс — моя музыка",
                 "Яндекс — мои плейлисты",
-                "Deezer / SoundCloud — по ссылке",
+                "Deezer / SoundCloud / YouTube / Dotify / Muriel — по ссылке",
+                "По скриншоту плейлиста",
+                "Вставить список треков",
                 "Сбросить входы (Spotify/Яндекс)",
         };
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("Импорт")
-                .setItems(items, (dialogInterface, which) -> {
+        su.gwarden.music.ui.WonderDialog.list(this, "Импорт",
+                "Откуда переносим музыку?", items, which -> {
                     switch (which) {
                         case 0:
                             spotifyImportLiked();
@@ -10631,48 +10663,263 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                             showImportDialog("https://open.spotify.com/playlist/...");
                             return;
                         case 3:
-                            yandexImportLiked();
+                            tiktokImport();
                             return;
                         case 4:
-                            yandexPickPlaylist();
+                            yandexImportLiked();
                             return;
                         case 5:
+                            yandexPickPlaylist();
+                            return;
+                        case 6:
                             showImportDialog("https://www.deezer.com/playlist/...");
+                            return;
+                        case 7:
+                            pickScreenshot();
+                            return;
+                        case 8:
+                            showTextImport();
                             return;
                         default:
                             resetImports();
                     }
-                })
-                .show();
+                });
     }
 
     private final void showImportDialog(java.lang.String hint) {
-        final android.widget.EditText input = new android.widget.EditText(this);
-        input.setHint(hint);
-        input.setSingleLine();
-        int pad = (int) (16 * getResources().getDisplayMetrics().density);
-        input.setPadding(pad, pad, pad, pad);
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("Импорт по ссылке")
-                .setMessage("Spotify / Deezer / SoundCloud — подберём треки в SoundCloud")
-                .setView(input)
-                .setPositiveButton("Импортировать", (dialogInterface, i) -> {
-                    java.lang.String url = input.getText().toString().trim();
-                    if (url.length() == 0) {
-                        return;
+        su.gwarden.music.ui.WonderDialog.input(this, "Импорт по ссылке",
+                "Spotify / Deezer / SoundCloud / YouTube / TikTok / Dotify / Muriel — подберём треки в SoundCloud",
+                hint, "", "Импортировать", url -> {
+                    if (!url.isEmpty()) {
+                        startUrlImport(url);
                     }
-                    startUrlImport(url);
-                })
-                .setNegativeButton("Отмена", (android.content.DialogInterface.OnClickListener) null)
-                .show();
+                });
+    }
+
+    private final void tiktokImport() {
+        su.gwarden.music.ui.WonderDialog.input(this, "TikTok",
+                "Ссылка на видео — вытащим звук и попробуем найти трек",
+                "https://www.tiktok.com/@.../video/...", "", "Найти трек", url -> {
+                    if (!url.isEmpty()) {
+                        startTikTokImport(url);
+                    }
+                });
+    }
+
+    private final void startTikTokImport(java.lang.String url) {
+        this.importToken++;
+        final int token = this.importToken;
+        showLoading();
+        showPill("TikTok: слушаю звук...");
+        su.gwarden.music.api.ApiClient.INSTANCE.importTikTok(url, (start, err) -> {
+            if (token != this.importToken) {
+                return kotlin.Unit.INSTANCE;
+            }
+            if (err != null || start == null) {
+                hideLoading();
+                showPill("TikTok: " + (err == null ? "пустой ответ" : err));
+                return kotlin.Unit.INSTANCE;
+            }
+            pollImport(start.getJob(), start.getTitle(), start.getCover(), 0, token);
+            return kotlin.Unit.INSTANCE;
+        });
+    }
+
+    private final void pickScreenshot() {
+        android.content.Intent i = new android.content.Intent(
+                android.content.Intent.ACTION_GET_CONTENT);
+        i.setType("image/*");
+        i.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+        try {
+            startActivityForResult(
+                    android.content.Intent.createChooser(i, "Скриншот плейлиста"), 82);
+        } catch (java.lang.Throwable t) {
+            showPill("Не открылся выбор фото");
+        }
+    }
+
+    private final void showTextImport() {
+        su.gwarden.music.ui.WonderDialog.text(this, "Импорт по тексту",
+                "Каждая строка: Artist — Title", "", "Импортировать", text -> {
+                    if (!text.isEmpty()) {
+                        startTextImport(text, "Импорт по тексту");
+                    }
+                });
+    }
+
+    private final void ocrScreenshot(final android.net.Uri uri) {
+        showLoading();
+        showPill("Распознаю скриншот...");
+        su.gwarden.music.api.ApiClient.INSTANCE.ocrScreenshot(uri, (text, err) -> {
+            hideLoading();
+            if (err != null || text == null) {
+                showPill("OCR: " + (err == null ? "пустой ответ" : err));
+                return kotlin.Unit.INSTANCE;
+            }
+            final java.lang.String prepared = prepareOcrText(text);
+            if (prepared.isEmpty()) {
+                showPill("На скриншоте не нашёл треки");
+                return kotlin.Unit.INSTANCE;
+            }
+            su.gwarden.music.ui.WonderDialog.text(MainActivity.this, "Проверь треки",
+                    "Распознал с скриншота. Поправь строки, если нужно, и импортируй.",
+                    prepared, "Импортировать", edited -> {
+                        if (!edited.isEmpty()) {
+                            startTextImport(edited, "Импорт по скриншоту");
+                        }
+                    });
+            return kotlin.Unit.INSTANCE;
+        });
+    }
+
+    private static boolean ocrUiLine(java.lang.String raw) {
+        java.lang.String s = raw == null ? "" : raw.trim();
+        if (s.length() < 2 || s.length() > 160) {
+            return true;
+        }
+        java.lang.String l = s.toLowerCase();
+        if (l.matches("\\d{1,2}:\\d{2}(:\\d{2})?")) {
+            return true;
+        }
+        if (l.matches("\\d+\\s*(трек|трека|треков|track|tracks).*")) {
+            return true;
+        }
+        if (l.startsWith("@") || l.matches("[•·\\-–—]+")) {
+            return true;
+        }
+        java.lang.String[] bad = {
+                "главная", "поиск", "шортсы", "моя волна", "библиотека",
+                "плейлист", "плейлисты", "слушать", "добавить к себе",
+                "открыть", "скачать", "назад", "ещё", "еще", "меню",
+                "аккаунт", "импорт", "настройки", "вход", "выйти",
+                "подключить", "wonder", "dotify", "muriel", "spotify",
+                "yandex", "яндекс музыка", "vk музыка",
+        };
+        for (java.lang.String b : bad) {
+            if (l.equals(b)) {
+                return true;
+            }
+        }
+        if (l.matches(".*\\b(треков|трека|tracks)\\b.*") && s.length() < 40) {
+            return true;
+        }
+        if (l.startsWith("подборк") || l.startsWith("рекоменд")
+                || l.startsWith("новинк") || l.startsWith("чарт")) {
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean ocrLooksArtist(java.lang.String raw) {
+        java.lang.String s = raw == null ? "" : raw.trim();
+        if (ocrUiLine(s) || s.length() > 70) {
+            return false;
+        }
+        if (s.contains(" — ") || s.contains(" – ") || s.contains(" - ")) {
+            return false;
+        }
+        if (s.matches(".*\\d{1,2}:\\d{2}.*")) {
+            return false;
+        }
+        return true;
+    }
+
+    private static java.lang.String prepareOcrText(java.lang.String raw) {
+        java.util.List<java.lang.String> all = new java.util.ArrayList<>();
+        for (java.lang.String line : (raw == null ? "" : raw).split("\\r?\\n")) {
+            java.lang.String s = line == null ? "" : line.trim();
+            if (s.length() >= 2) {
+                all.add(s);
+            }
+        }
+        // В списках над треками идёт шапка «@user · 54 трека». Всё до неё —
+        // обложка/название плейлиста, а не треки.
+        int start = 0;
+        for (int i = 0; i < all.size(); i++) {
+            java.lang.String l = all.get(i).toLowerCase();
+            if (l.matches(".*\\b(треков|трека|tracks)\\b.*") && all.get(i).length() < 70) {
+                start = i + 1;
+            }
+        }
+        int end = all.size();
+        for (int i = start; i < all.size(); i++) {
+            java.lang.String l = all.get(i).trim().toLowerCase();
+            if (l.equals("главная") || l.equals("поиск") || l.equals("шортсы")
+                    || l.equals("моя волна") || l.equals("библиотека")) {
+                end = i;
+                break;
+            }
+        }
+        java.util.List<java.lang.String> lines = new java.util.ArrayList<>();
+        for (int i = start; i < end; i++) {
+            java.lang.String s = all.get(i);
+            if (s.contains("|")) {
+                java.lang.String tail = s.substring(s.lastIndexOf('|') + 1).trim();
+                if (tail.length() >= 2) {
+                    s = tail;
+                }
+            }
+            if (s.contains("@") && !s.startsWith("@")) {
+                java.lang.String tail = s.substring(s.lastIndexOf('@') + 1).trim();
+                if (tail.length() >= 2) {
+                    s = tail;
+                }
+            }
+            if (!ocrUiLine(s)) {
+                lines.add(s);
+            }
+        }
+        java.util.LinkedHashSet<java.lang.String> pairs = new java.util.LinkedHashSet<>();
+        for (int i = 0; i < lines.size() && pairs.size() < 500; i++) {
+            java.lang.String s = lines.get(i);
+            if (s.contains(" — ") || s.contains(" – ") || s.contains(" - ")) {
+                pairs.add(s);
+                continue;
+            }
+            if (i + 1 < lines.size()) {
+                java.lang.String next = lines.get(i + 1);
+                if (ocrLooksArtist(next)) {
+                    // в списках Dotify/Spotify сначала название, под ним артист
+                    pairs.add(next + " — " + s);
+                    i++;
+                    continue;
+                }
+            }
+            pairs.add(s);
+        }
+        return android.text.TextUtils.join("\n", pairs);
+    }
+
+    private final void startTextImport(java.lang.String text, java.lang.String title) {
+        this.importToken++;
+        final int token = this.importToken;
+        showLoading();
+        showPill("Импорт: подбираю треки...");
+        su.gwarden.music.api.ApiClient.INSTANCE.importText(text, title, (start, err) -> {
+            if (token != this.importToken) {
+                return kotlin.Unit.INSTANCE;
+            }
+            if (err != null || start == null) {
+                hideLoading();
+                showPill("Импорт: " + (err == null ? "пустой ответ" : err));
+                return kotlin.Unit.INSTANCE;
+            }
+            showPill("Импорт «" + start.getTitle() + "» · 0/" + start.getTotal());
+            pollImport(start.getJob(), start.getTitle(), start.getCover(), 0, token);
+            return kotlin.Unit.INSTANCE;
+        });
     }
 
     private final void startUrlImport(java.lang.String url) {
+        if (url.toLowerCase().contains("tiktok.com")) {
+            startTikTokImport(url);
+            return;
+        }
         this.importToken++;
         final int token = this.importToken;
         showLoading();
         showPill("Импорт: читаю плейлист...");
-        su.gwarden.music.api.ApiClient.INSTANCE.importJob(url, 200, (start, err) -> {
+        su.gwarden.music.api.ApiClient.INSTANCE.importJob(url, 10000, (start, err) -> {
             if (token != this.importToken) {
                 return kotlin.Unit.INSTANCE;
             }
@@ -10711,7 +10958,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 if (attempt % 4 == 0) {
                     showPill("Импорт " + st.getDone() + "/" + st.getTotal());
                 }
-                if (attempt < 600) {
+                if (attempt < 7200) {
                     uiHandler.postDelayed(
                             () -> pollImport(job, title, cover, attempt + 1, token), 1000L);
                 } else {
@@ -10790,13 +11037,11 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             for (int i = 0; i < list.size(); i++) {
                 names[i] = list.get(i).getTitle() + " · " + list.get(i).getCount();
             }
-            new android.app.AlertDialog.Builder(this)
-                    .setTitle("Плейлисты Яндекс Музыки")
-                    .setItems(names, (dialogInterface, which) -> {
+            su.gwarden.music.ui.WonderDialog.list(this, "Плейлисты Яндекс Музыки",
+                    "Выбери плейлист для переноса", names, which -> {
                         su.gwarden.music.api.ApiClient.SpotifyPlaylist pl = list.get(which);
                         startYandexImport("playlist", pl.getId(), pl.getTitle());
-                    })
-                    .show();
+                    });
             return kotlin.Unit.INSTANCE;
         });
     }
@@ -10983,13 +11228,11 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             for (int i = 0; i < list.size(); i++) {
                 names[i] = list.get(i).getTitle() + " · " + list.get(i).getCount();
             }
-            new android.app.AlertDialog.Builder(this)
-                    .setTitle("Плейлисты Spotify")
-                    .setItems(names, (dialogInterface, which) -> {
+            su.gwarden.music.ui.WonderDialog.list(this, "Плейлисты Spotify",
+                    "Выбери плейлист для переноса", names, which -> {
                         su.gwarden.music.api.ApiClient.SpotifyPlaylist pl = list.get(which);
                         startSpotifyImport("playlist", pl.getId(), pl.getTitle());
-                    })
-                    .show();
+                    });
             return kotlin.Unit.INSTANCE;
         });
     }
@@ -11016,34 +11259,47 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     }
 
     private final void spotifySetupDialog() {
-        float d = getResources().getDisplayMetrics().density;
         android.widget.LinearLayout box = new android.widget.LinearLayout(this);
         box.setOrientation(1);
-        box.setPadding((int) (20 * d), (int) (8 * d), (int) (20 * d), 0);
 
         android.widget.TextView hint = new android.widget.TextView(this);
         hint.setText("1. developer.spotify.com → Create app\n"
-                + "2. Redirect URI: https://example.com/music/spotify/callback\n"
+                + "2. Redirect URI: https://example.com/spotify/callback\n"
                 + "3. User Management → добавь свой аккаунт Spotify\n"
                 + "4. Вставь Client ID и Client Secret из Settings");
-        hint.setTextSize(13.0f);
-        hint.setTextColor(-7829368);
+        hint.setTextSize(12.5f);
+        hint.setTextColor(0xFF8A8A8A);
+        hint.setLineSpacing(dp(3), 1.0f);
         box.addView(hint);
 
         final android.widget.EditText cid = new android.widget.EditText(this);
         cid.setHint("Client ID");
         cid.setSingleLine();
-        box.addView(cid);
+        cid.setTextSize(14f);
+        cid.setTextColor(-1);
+        cid.setHintTextColor(0xFF8A8A8A);
+        cid.setBackgroundResource(su.gwarden.music.R.drawable.bg_field);
+        cid.setPadding(dp(14), dp(11), dp(14), dp(11));
+        android.widget.LinearLayout.LayoutParams lp1 =
+                new android.widget.LinearLayout.LayoutParams(-1, dp(48));
+        lp1.topMargin = dp(12);
+        box.addView(cid, lp1);
 
         final android.widget.EditText sec = new android.widget.EditText(this);
         sec.setHint("Client Secret");
         sec.setSingleLine();
-        box.addView(sec);
+        sec.setTextSize(14f);
+        sec.setTextColor(-1);
+        sec.setHintTextColor(0xFF8A8A8A);
+        sec.setBackgroundResource(su.gwarden.music.R.drawable.bg_field);
+        sec.setPadding(dp(14), dp(11), dp(14), dp(11));
+        android.widget.LinearLayout.LayoutParams lp2 =
+                new android.widget.LinearLayout.LayoutParams(-1, dp(48));
+        lp2.topMargin = dp(10);
+        box.addView(sec, lp2);
 
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("Настройки Spotify")
-                .setView(box)
-                .setPositiveButton("Сохранить", (dialogInterface, i) -> {
+        su.gwarden.music.ui.WonderDialog.custom(this, "Настройки Spotify", box,
+                "Сохранить", () -> {
                     java.lang.String a = cid.getText().toString().trim();
                     java.lang.String b = sec.getText().toString().trim();
                     if (a.isEmpty() || b.isEmpty()) {
@@ -11059,9 +11315,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                         spotifyConnect();
                         return kotlin.Unit.INSTANCE;
                     });
-                })
-                .setNegativeButton("Отмена", (android.content.DialogInterface.OnClickListener) null)
-                .show();
+                }, "Отмена", null, null);
     }
 
     /* JADX INFO: Access modifiers changed from: private */

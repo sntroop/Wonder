@@ -97,7 +97,7 @@ class PlayerController(private val context: Context) {
 
     /**
      * Поиск замены треку, который VK/сервер не отдают: та же песня на
-     * SoundCloud. Реализует MainActivity через /api/replace.
+     * SoundCloud. Реализует MainActivity через сервер.
      */
     var findReplacement: ((Track, (Track?) -> Unit) -> Unit)? = null
 
@@ -131,7 +131,7 @@ class PlayerController(private val context: Context) {
     fun play(track: Track, queue: List<Track>) {
         // Без рабочего VK на телефоне VK-треки не заиграют вообще: сервер
         // ходит в VK через этот же телефон. Не начинаем - иначе бесконечные
-        // 401 на /api/stream и /api/beat и «тормоза».
+        // 401 на поток и бит-карту и «тормоза».
         // блокируем VK только если он реально мёртв (нет токена), а не
         // из-за одной случайной ошибки: иначе «В моей музыке играет только SC»
         val vkDead = vkVeto()

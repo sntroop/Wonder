@@ -15,7 +15,7 @@ Source snapshot of the Android client: interface, player, library, offline mode.
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?logo=kotlin&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android&logoColor=white)
 ![minSdk](https://img.shields.io/badge/minSdk-24-0A0A0A)
-![version](https://img.shields.io/badge/version-12.50-0A0A0A)
+![version](https://img.shields.io/badge/version-12.58-0A0A0A)
 ![license](https://img.shields.io/badge/license-source--available-6C4CF1)
 
 </div>
@@ -46,6 +46,7 @@ state.
 |---|---|---|
 | Playback | ExoPlayer/Media3, background service, media session, queue, next-track prefetch | Included |
 | Sound | 10-band equalizer, bass, reverb, distortion, tempo/pitch, crossfade | Included |
+| Audio FX | 10-band EQ, presets, bass shelf, reverb, distortion, tempo/pitch, crossfade | Included |
 | Appearance | Accent color, wallpaper/GIF/video background, blur/dim, custom fonts | Included |
 | Library | Tracks, artists, playlists, local collections, likes | Included |
 | Offline | Download cache, eviction policy, local HTTP stream server | Included |
@@ -56,7 +57,7 @@ state.
 | Recommendations | Home feed, wave, similar tracks, remixes | Not included |
 | Updates | In-app update banner UI | Stubbed |
 
-**59 Kotlin/Java files · ~23.3k lines · 121 resource files.**
+**59 Kotlin/Java files · ~24k lines · 121 resource files.**
 
 ## Architecture
 

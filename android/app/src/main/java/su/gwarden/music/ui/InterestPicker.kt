@@ -32,7 +32,7 @@ import java.util.function.Consumer
  *
  * Жанров много (70+), поэтому они сгруппированы, есть поиск по названию и
  * список на RecyclerView - карточки вне экрана не грузят картинки и память.
- * Выбранные id уходят на сервер (/api/guest/prefs) как семена волны.
+ * Выбранные id уходят на сервер (интересы) как семена волны.
  */
 object InterestPicker {
 
@@ -326,7 +326,7 @@ object InterestPicker {
             val img = ImageView(ctx)
             img.scaleType = ImageView.ScaleType.CENTER_CROP
             card.addView(img, FrameLayout.LayoutParams(-1, -1))
-            // сервер отдаёт относительный путь /api/genre_art/<id>.png
+            // сервер отдаёт относительный путь обложки жанра
             val raw = item.img
             val cover = when {
                 raw.isNullOrEmpty() -> null

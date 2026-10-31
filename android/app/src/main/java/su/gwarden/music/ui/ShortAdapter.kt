@@ -30,6 +30,7 @@ class ShortAdapter(
     /** Откуда брать состояние (кэш в активити). */
     var socialOf: (Short) -> Social? = { null }
     var onLike: (Short) -> Unit = {}
+    var onDislike: (Short) -> Unit = {}
     var onComments: (Short) -> Unit = {}
 
     private val items = ArrayList<Short>()
@@ -98,6 +99,9 @@ class ShortAdapter(
         h.add.isEnabled = !isAdded
 
         val soc = socialOf(sh)
+        // состояние лайка ещё не пришло - не даём переключать
+        h.like.isEnabled = soc != null
+        h.like.alpha = if (soc != null) 1f else 0.45f
         h.likeIc.setImageResource(
             if (soc?.liked == true) R.drawable.ic_heart_fill else R.drawable.ic_heart_outline
         )
@@ -107,6 +111,7 @@ class ShortAdapter(
         h.likeCount.text = if ((soc?.likes ?: 0) > 0) soc!!.likes.toString() else ""
         h.cmtCount.text = if ((soc?.comments ?: 0) > 0) soc!!.comments.toString() else ""
         h.like.setOnClickListener { onLike(sh) }
+        h.dislike.setOnClickListener { onDislike(sh) }
         h.cmt.setOnClickListener { onComments(sh) }
 
         ImageLoader.load(h.art, ApiClient.img(t.artwork, 900), 0, R.drawable.ic_music_note, null)
@@ -128,5 +133,6 @@ class ShortAdapter(
         val likeCount: TextView = v.findViewById(R.id.short_like_count)
         val cmt: View = v.findViewById(R.id.short_cmt)
         val cmtCount: TextView = v.findViewById(R.id.short_cmt_count)
+        val dislike: View = v.findViewById(R.id.short_dislike)
     }
 }

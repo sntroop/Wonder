@@ -33,6 +33,14 @@ class TrackAdapter(
     /** Режим «Моя музыка»: разрешаем таскать и свайпать локальные треки. */
     var editable = false
 
+    /** Режим «Лайки»: вместо плюсика рисуем залитое сердечко. */
+    var likedMode = false
+        set(value) {
+            if (field == value) return
+            field = value
+            notifyDataSetChanged()
+        }
+
     /** Играет ли сейчас (чтобы эквалайзер в строке не «дышал» на паузе). */
     private var isPlayingNow = false
 
@@ -154,11 +162,22 @@ class TrackAdapter(
         val canAdd = allowAdd && onAdd != null && track.id.isNotEmpty() &&
             !added.contains(track.id) && !track.mine &&
             track.id !in mineIds && !LocalLibrary.contains(track)
-        // ГРАБЛЯ: если прятать плюсик через GONE, соседняя кнопка «⋮» прыгает
-        // вправо прямо под пальцем. Держим место занятым (INVISIBLE).
-        holder.add.visibility = if (canAdd) View.VISIBLE else View.INVISIBLE
-        holder.add.isClickable = canAdd
-        holder.add.setOnClickListener { onAdd?.invoke(track) }
+        if (likedMode) {
+            // раздел «Лайки»: плюсик тут бессмысленен, показываем сердечко
+            holder.add.visibility = View.VISIBLE
+            holder.add.setImageResource(R.drawable.ic_heart_fill)
+            holder.add.isClickable = false
+            holder.add.isEnabled = false
+            holder.add.alpha = 1f
+        } else {
+            holder.add.isEnabled = true
+            holder.add.setImageResource(R.drawable.ic_plus)
+            // ГРАБЛЯ: если прятать плюсик через GONE, соседняя кнопка «⋮»
+            // прыгает вправо прямо под пальцем. Держим место занятым (INVISIBLE).
+            holder.add.visibility = if (canAdd) View.VISIBLE else View.INVISIBLE
+            holder.add.isClickable = canAdd
+            holder.add.setOnClickListener { onAdd?.invoke(track) }
+        }
         holder.more.setOnClickListener { onMenu?.invoke(track, it) }
 
         // скачан на телефон - играет без интернета

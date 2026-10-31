@@ -101,6 +101,7 @@ class ShortsActivity : AppCompatActivity() {
         )
         adapter.socialOf = { sh -> social[skey(sh.track)] }
         adapter.onLike = { sh -> toggleLike(sh) }
+        adapter.onDislike = { sh -> dislike(sh) }
         adapter.onComments = { sh -> openComments(sh) }
         list.layoutManager = LinearLayoutManager(this)
         list.adapter = adapter
@@ -204,6 +205,7 @@ class ShortsActivity : AppCompatActivity() {
 
     // ------------------------------------------------- лайки и комментарии
     private val social = HashMap<String, ShortAdapter.Social>()
+    private val socialLoading = HashSet<String>()
     private val commentsOf = HashMap<String, List<ApiClient.SocialComment>>()
 
     private fun skey(t: Track): String = t.source + ":" + t.id
@@ -212,15 +214,16 @@ class ShortsActivity : AppCompatActivity() {
         for (i in from..minOf(from + 3, shorts.size - 1)) {
             val t = shorts[i].track
             val k = skey(t)
-            if (social.containsKey(k)) continue
-            social[k] = ShortAdapter.Social()   // чтобы не дублировать запрос
+            if (social.containsKey(k) || k in socialLoading) continue
+            socialLoading.add(k)
             ApiClient.trackSocial(t.source, t.id) { info ->
+                socialLoading.remove(k)
                 if (info == null) {
                     social.remove(k)
-                    return@trackSocial
+                } else {
+                    social[k] = ShortAdapter.Social(info.liked, info.likes, info.comments.size)
+                    commentsOf[k] = info.comments
                 }
-                social[k] = ShortAdapter.Social(info.liked, info.likes, info.comments.size)
-                commentsOf[k] = info.comments
                 val idx = shorts.indexOfFirst { skey(it.track) == k }
                 if (idx >= 0) runOnUiThread { adapter.notifyItemChanged(idx) }
             }
@@ -230,12 +233,44 @@ class ShortsActivity : AppCompatActivity() {
     private fun toggleLike(sh: Short) {
         val t = sh.track
         val k = skey(t)
-        val cur = social[k] ?: ShortAdapter.Social()
+        // пока состояние не пришло - не переключаем: иначе первый тап
+        // по уже лайкнутому треку снимает лайк
+        val cur = social[k] ?: return
         ApiClient.toggleLike(t) { likes, liked ->
             social[k] = ShortAdapter.Social(liked, likes, cur.comments)
             val idx = shorts.indexOfFirst { skey(it.track) == k }
             if (idx >= 0) runOnUiThread { adapter.notifyItemChanged(idx) }
         }
+    }
+
+    /** «Не нравится»: сильный сигнал вкуса + сразу убираем шортс из ленты. */
+    private fun dislike(sh: Short) {
+        player?.feedbackDislike(sh.track)
+        val k = skey(sh.track)
+        val idx = shorts.indexOfFirst { skey(it.track) == k }
+        if (idx < 0) return
+        shorts.removeAt(idx)
+        social.remove(k)
+        commentsOf.remove(k)
+        adapter.submit(shorts)
+        session = shorts.toList()
+        Toast.makeText(this, "Больше не покажем", Toast.LENGTH_SHORT).show()
+        if (shorts.isEmpty()) {
+            loading.visibility = View.VISIBLE
+            loadingText.text = "Ищу другие шортсы…"
+            load(initial = true)
+            return
+        }
+        val next = idx.coerceAtMost(shorts.size - 1)
+        current = next
+        list.post {
+            list.scrollToPosition(next)
+            syncEqOrb()
+            playShort(next)
+            prefetchNext()
+            loadSocial(next)
+        }
+        if (next >= shorts.size - 3) loadMore()
     }
 
     private fun openComments(sh: Short) {
